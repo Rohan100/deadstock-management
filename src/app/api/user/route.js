@@ -15,22 +15,13 @@ import { usersTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const username = searchParams.get('username');
 
-    if (!username) {
-      return NextResponse.json({ error: 'Username is required' }, { status: 400 });
-    }
-
-    const user = await db.query.usersTable.findFirst({
-      where: eq(usersTable.username, username),
-    });
-
-    if (!user) {
+    const users = await db.select().from(usersTable)
+    if (!users) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json(users);
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

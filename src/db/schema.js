@@ -8,4 +8,6 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp().notNull().defaultNow(),
   email: varchar({ length: 255 }).notNull().unique(),
   isAdmin: boolean().notNull().default(false),
+  resetPasswordToken: varchar({ length: 255 }),
+  resetPasswordExpires: timestamp(),
 });
