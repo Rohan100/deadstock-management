@@ -57,14 +57,14 @@ const data = {
       icon: SquareTerminal,
       isActive: true,
       items: [
-        {
-          title: "Overview",
-          url: "/dashboard/overview",
-        },
-        {
-          title: "Analytics",
-          url: "/dashboard/analytics",
-        },
+        // {
+        //   title: "Overview",
+        //   url: "/dashboard/overview",
+        // },
+        // {
+        //   title: "Analytics",
+        //   url: "/dashboard/analytics",
+        // },
         {
           title: "Reports",
           url: "/dashboard/reports",
@@ -88,9 +88,13 @@ const data = {
           title: "Categories",
           url: "/inventory/categories",
         },
+        // {
+        //   title: "Stock Levels",
+        //   url: "/inventory/stock",
+        // },
         {
-          title: "Stock Levels",
-          url: "/inventory/stock",
+          title: "Transfer",
+          url: "/deadstock/expired",
         },
         {
           title: "Suppliers",
@@ -98,29 +102,29 @@ const data = {
         },
       ],
     },
-    {
-      title: "Deadstock Tracking",
-      url: "/deadstock",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Expired Items",
-          url: "/deadstock/expired",
-        },
-        {
-          title: "Obsolete Equipment",
-          url: "/deadstock/obsolete",
-        },
-        {
-          title: "Damaged Goods",
-          url: "/deadstock/damaged",
-        },
-        {
-          title: "Write-offs",
-          url: "/deadstock/writeoffs",
-        },
-      ],
-    },
+    // {
+    //   title: "Deadstock Tracking",
+    //   url: "/deadstock",
+    //   icon: BookOpen,
+    //   items: [
+    //     {
+    //       title: "Transform",
+    //       url: "/deadstock/expired",
+    //     },
+    //     // {
+    //     //   title: "Obsolete Equipment",
+    //     //   url: "/deadstock/obsolete",
+    //     // },
+    //     // {
+    //     //   title: "Damaged Goods",
+    //     //   url: "/deadstock/damaged",
+    //     // },
+    //     // {
+    //     //   title: "Write-offs",
+    //     //   url: "/deadstock/writeoffs",
+    //     // },
+    //   ],
+    // },
     {
       title: "Administration",
       url: "/admin",
@@ -134,34 +138,34 @@ const data = {
           title: "Departments",
           url: "/admin/departments",
         },
-        {
-          title: "Permissions",
-          url: "/admin/permissions",
-        },
-        {
-          title: "System Settings",
-          url: "/admin/settings",
-        },
+        // {
+        //   title: "Permissions",
+        //   url: "/admin/permissions",
+        // },
+        // {
+        //   title: "System Settings",
+        //   url: "/admin/settings",
+        // },
       ],
     },
   ],
-  projects: [
-    {
-      name: "Asset Disposal",
-      url: "/projects/disposal",
-      icon: Frame,
-    },
-    {
-      name: "Cost Analysis",
-      url: "/projects/cost-analysis",
-      icon: PieChart,
-    },
-    {
-      name: "Audit Trail",
-      url: "/projects/audit",
-      icon: Map,
-    },
-  ],
+  // projects: [
+  //   {
+  //     name: "Asset Disposal",
+  //     url: "/projects/disposal",
+  //     icon: Frame,
+  //   },
+  //   {
+  //     name: "Cost Analysis", 
+  //     url: "/projects/cost-analysis",
+  //     icon: PieChart,
+  //   },
+  //   {
+  //     name: "Audit Trail",
+  //     url: "/projects/audit",
+  //     icon: Map,
+  //   },
+  // ],
 }
 
 export function AppSidebar({
@@ -174,7 +178,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
