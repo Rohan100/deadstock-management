@@ -35,20 +35,20 @@ const data = {
   },
   teams: [
     {
-      name: "College Admin",
+      name: "Deadstock",
       logo: GalleryVerticalEnd,
       plan: "Premium",
     },
-    {
-      name: "Inventory Dept",
-      logo: AudioWaveform,
-      plan: "Standard",
-    },
-    {
-      name: "Finance Dept",
-      logo: Command,
-      plan: "Basic",
-    },
+    // {
+    //   name: "Inventory Dept",
+    //   logo: AudioWaveform,
+    //   plan: "Standard",
+    // },
+    // {
+    //   name: "Finance Dept",
+    //   logo: Command,
+    //   plan: "Basic",
+    // },
   ],
   navMain: [
     {
@@ -94,7 +94,7 @@ const data = {
         // },
         {
           title: "Transfer",
-          url: "/deadstock/expired",
+          url: "/inventory/transfer",
         },
         {
           title: "Suppliers",
@@ -174,6 +174,7 @@ export function AppSidebar({
   return (
     (<Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
+        
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
