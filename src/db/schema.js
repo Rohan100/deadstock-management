@@ -10,4 +10,5 @@ export const usersTable = pgTable("users", {
   isAdmin: boolean().notNull().default(false),
   resetPasswordToken: varchar({ length: 255 }),
   resetPasswordExpires: timestamp(),
+  isEnabled: boolean().notNull().default(true),
 });

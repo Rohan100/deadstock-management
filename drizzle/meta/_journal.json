@@ -15,6 +15,13 @@
       "when": 1752585622820,
       "tag": "0001_slow_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1752731363626,
+      "tag": "0002_clumsy_elektra",
+      "breakpoints": true
     }
   ]
 }

@@ -16,9 +16,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { UserPlus } from "lucide-react";
+import { UserPlus, Eye, EyeOff } from "lucide-react";
+import axios from "axios";
 
-export default function AddUser() {
+export default function AddUser({setUsers}) {
   return (
     <Dialog>
       <form>
@@ -29,36 +30,29 @@ export default function AddUser() {
           <DialogHeader>
             <DialogTitle>Create User</DialogTitle>
           </DialogHeader>
-          <SignupPage />
+          <SignupPage setUsers={setUsers}/>
         </DialogContent>
       </form>
     </Dialog>
   )
 }
 
-function SignupPage() {
+function SignupPage({setUsers}) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, formState: { errors },reset } = useForm();
 
   const onSubmit = async (data) => {
     setLoading(true);
     setError("");
     try {
       // Replace with your signup API endpoint
-      const res = await fetch("/api/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        setError(result.message || "Signup failed");
-      } else {
-        router.push("/login");
-      }
+      const res = await axios.post("/api/user",{...data, isAdmin: false });
+      setUsers(prev => [...prev,res.data]);
+      reset()
     } catch (err) {
       setError("Something went wrong. Please try again.");
     }
@@ -107,12 +101,24 @@ function SignupPage() {
           </div>
           <div>
             <Label htmlFor="password" className="mb-2">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Create a password"
-              {...register("password", { required: "Password is required", minLength: { value: 6, message: "Minimum 6 characters" } })}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Create a password"
+                {...register("password", { 
+                  required: "Password is required", 
+                  minLength: { value: 6, message: "Minimum 6 characters" } 
+                })}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
             {errors.password && <p className="text-red-500 text-xs">{errors.password.message}</p>}
           </div>
           {error && (

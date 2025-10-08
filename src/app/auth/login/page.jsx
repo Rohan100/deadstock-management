@@ -36,7 +36,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+    <div className="flex min-h-screen items-center justify-center bg-background">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold">Sign In</CardTitle>
@@ -70,7 +70,7 @@ export default function LoginPage() {
             {error && (
               <div className="text-red-500 text-sm text-center">{error}</div>
             )}
-            <Link href={'/forget'} className="mt-3 w-full flex justify-end  text-sm">
+            <Link href={'/auth/forget-password'} className="mt-3 w-full flex justify-end  text-sm text-blue-700">
                 Forget Password?
             </Link>
           </CardContent>

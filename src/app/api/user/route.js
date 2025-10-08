@@ -30,9 +30,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { name, username, password, email } = await request.json();
+    const { name, username, password, email,isAdmin } = await request.json();
 
-    if (!name || !username || !password || !email) {
+    if (!name || !username || !password || !email ) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
 
@@ -43,7 +43,7 @@ export async function POST(request) {
       username,
       password: hashedPassword,
       email,
-      isAdmin: true,
+      isAdmin,
     };
 
     const insertedUser = await db.insert(usersTable).values(newUser).returning();
