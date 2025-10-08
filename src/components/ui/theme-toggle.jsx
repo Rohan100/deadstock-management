@@ -1,84 +1,68 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Moon, Sun } from "lucide-react";
+
+import { Moon, SunDim } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { flushSync } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 
-export function ThemeToggle({ className }) {
-  const [mounted, setMounted] = useState(false);
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+export const AnimatedThemeToggler = ({ className }) => {
+  const { theme, setTheme } = useTheme();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const buttonRef = useRef(null);
 
-  // Only render after hydration to avoid SSR mismatch
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setIsDarkMode(theme === "dark");
+  }, [theme]);
 
-  if (!mounted) {
-    // Return a placeholder with the same structure to avoid layout shift
-    return (
-      <div
-        className={cn(
-          "flex w-16 h-8 p-1 rounded-full cursor-pointer transition-all duration-300",
-          "bg-white border border-zinc-200", // Default to light theme
-          className
-        )}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="flex justify-between items-center w-full">
-          <div className="flex justify-center items-center w-6 h-6 rounded-full transition-transform duration-300 transform translate-x-8 bg-gray-200">
-            <Sun className="w-4 h-4 text-gray-700" strokeWidth={1.5} />
-          </div>
-          <div className="flex justify-center items-center w-6 h-6 rounded-full transition-transform duration-300 transform -translate-x-8">
-            <Moon className="w-4 h-4 text-black" strokeWidth={1.5} />
-          </div>
-        </div>
-      </div>
+  const changeTheme = async () => {
+    if (!buttonRef.current || !document.startViewTransition) return;
+
+    await document.startViewTransition(() => {
+      flushSync(() => {
+        const newTheme = isDarkMode ? "light" : "dark";
+        setTheme(newTheme); 
+        setIsDarkMode(newTheme === "dark");
+      });
+    }).ready;
+
+    const { top, left, width, height } = buttonRef.current.getBoundingClientRect();
+    const x = left + width / 2;
+    const y = top + height / 2;
+
+    const right = window.innerWidth - left;
+    const bottom = window.innerHeight - top;
+    const maxRad = Math.hypot(Math.max(left, right), Math.max(top, bottom));
+
+    document.documentElement.animate(
+      {
+        clipPath: [
+          `circle(0px at ${x}px ${y}px)`,
+          `circle(${maxRad}px at ${x}px ${y}px)`,
+        ],
+      },
+      {
+        duration: 700,
+        easing: "ease-in-out",
+        pseudoElement: "::view-transition-new(root)",
+      }
     );
-  }
+  };
 
   return (
-    <div
+    <button
+      ref={buttonRef}
+      onClick={changeTheme}
       className={cn(
-        "flex w-16 h-8 p-1 rounded-full cursor-pointer transition-all duration-300",
-        isDark
-          ? "bg-zinc-950 border border-zinc-800"
-          : "bg-white border border-zinc-200",
+        "p-2 rounded-full bg-transparent cursor-pointer text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors",
         className
       )}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      role="button"
-      tabIndex={0}
     >
-      <div className="flex justify-between items-center w-full">
-        <div
-          className={cn(
-            "flex justify-center items-center w-6 h-6 rounded-full transition-transform duration-300",
-            isDark
-              ? "transform translate-x-0 bg-zinc-800"
-              : "transform translate-x-8 bg-gray-200"
-          )}
-        >
-          {isDark ? (
-            <Moon className="w-4 h-4 text-white" strokeWidth={1.5} />
-          ) : (
-            <Sun className="w-4 h-4 text-gray-700" strokeWidth={1.5} />
-          )}
-        </div>
-        <div
-          className={cn(
-            "flex justify-center items-center w-6 h-6 rounded-full transition-transform duration-300",
-            isDark ? "bg-transparent" : "transform -translate-x-8"
-          )}
-        >
-          {isDark ? (
-            <Sun className="w-4 h-4 text-gray-500" strokeWidth={1.5} />
-          ) : (
-            <Moon className="w-4 h-4 text-black" strokeWidth={1.5} />
-          )}
-        </div>
-      </div>
-    </div>
+      {isDarkMode ? (
+        <SunDim className="h-5 w-5" />
+      ) : (
+        <Moon className="h-5 w-5" />
+      )}
+    </button>
   );
-}
+};

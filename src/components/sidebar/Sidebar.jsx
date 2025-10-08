@@ -14,7 +14,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ThemeToggle } from "../ui/theme-toggle";
+import { AnimatedThemeToggler } from "../ui/theme-toggle";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 
@@ -24,7 +24,6 @@ export default function SidebarPage({ children }) {
   const breadcrumbItems = useMemo(() => {
     const pathSegments = pathname.split('/').filter(Boolean);
     
-    // Route mappings for better display names
     const routeNames = {
       'dashboard': 'Dashboard',
       'overview': 'Overview',
@@ -36,7 +35,7 @@ export default function SidebarPage({ children }) {
       'stock': 'Stock Levels',
       'suppliers': 'Suppliers',
       'deadstock': 'Deadstock Tracking',
-      'expired': 'Expired Items',
+      'transfer': 'Transfer',
       'obsolete': 'Obsolete Equipment',
       'damaged': 'Damaged Goods',
       'writeoffs': 'Write-offs',
@@ -54,7 +53,6 @@ export default function SidebarPage({ children }) {
     const breadcrumbs = [];
     let currentPath = '';
 
-    // Add Home/Dashboard as the first breadcrumb
     if (pathSegments.length > 0) {
       breadcrumbs.push({
         name: 'Dashboard',
@@ -67,7 +65,6 @@ export default function SidebarPage({ children }) {
       currentPath += `/${segment}`;
       const isLast = index === pathSegments.length - 1;
       
-      // Skip dashboard in the loop since we already added it
       if (segment === 'dashboard' && index === 0) return;
       
       breadcrumbs.push({
@@ -119,7 +116,7 @@ export default function SidebarPage({ children }) {
                 </BreadcrumbList>
               </Breadcrumb>
 
-              <ThemeToggle />
+              <AnimatedThemeToggler />
             </div>
           </div>
         </header>
