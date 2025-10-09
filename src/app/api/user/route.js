@@ -13,6 +13,7 @@ import bcrypt from 'bcryptjs';
 
 import { usersTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+
 export async function GET(request) {
   try {
 
