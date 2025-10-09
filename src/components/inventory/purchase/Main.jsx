@@ -156,7 +156,7 @@ const PurchaseMainPage = () => {
           <DialogTrigger asChild>
             <Button className="bg-primary">
               <Plus className="h-4 w-4 mr-2" />
-              New Purchase
+              New Purchases
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">

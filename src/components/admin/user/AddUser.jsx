@@ -23,7 +23,7 @@ export default function AddUser() {
     <Dialog>
       <form>
         <DialogTrigger asChild>
-          <Button ><UserPlus /> Add User</Button>
+          <Button ><UserPlus />Add User</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

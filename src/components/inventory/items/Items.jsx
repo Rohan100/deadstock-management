@@ -49,12 +49,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const Items = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedItems, setSelectedItems] = useState([]);
+  const [isItemDialogOpen, setItemDialogOpen] = useState(false);
+
+  // Item form state
+  const [itemName, setItemName] = useState("");
+  const [category, setCategory] = useState("");
+  const [sku, setSku] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [minStock, setMinStock] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [department, setDepartment] = useState("");
+  const [location, setLocation] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [condition, setCondition] = useState("New");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [description, setDescription] = useState("");
 
   // Sample items data with prices in INR
   const items = [
@@ -161,7 +179,45 @@ const Items = () => {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  const handleAddItem = () => {
+    // Here you would typically make an API call to add the item
+    console.log("Adding item:", {
+      name: itemName,
+      category: category,
+      sku: sku,
+      quantity: parseInt(quantity),
+      minStock: parseInt(minStock),
+      unitPrice: parseFloat(unitPrice),
+      department: department,
+      location: location,
+      supplier: supplier,
+      condition: condition,
+      expiryDate: expiryDate,
+      description: description,
+      totalValue: parseFloat(quantity) * parseFloat(unitPrice),
+      lastUpdated: new Date().toISOString().split('T')[0],
+      status: "Active"
+    });
+    
+    // Reset form and close dialog
+    resetForm();
+    setItemDialogOpen(false);
+  };
 
+  const resetForm = () => {
+    setItemName("");
+    setCategory("");
+    setSku("");
+    setQuantity("");
+    setMinStock("");
+    setUnitPrice("");
+    setDepartment("");
+    setLocation("");
+    setSupplier("");
+    setCondition("New");
+    setExpiryDate("");
+    setDescription("");
+  };
 
   // Get condition badge color
   const getConditionColor = (condition) => {
@@ -224,10 +280,195 @@ const Items = () => {
             Manage all inventory items across departments
           </p>
         </div>
-        <Button className="bg-primary">
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Item
-        </Button>
+
+        <Dialog open={isItemDialogOpen} onOpenChange={(open) => {
+          setItemDialogOpen(open);
+          if (!open) resetForm();
+        }}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Item
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Inventory Item</DialogTitle>
+              <DialogDescription>
+                Add a new item to your inventory management system
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="itemName">Item Name *</Label>
+                  <Input
+                    id="itemName"
+                    placeholder="Enter item name"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sku">SKU *</Label>
+                  <Input
+                    id="sku"
+                    placeholder="Enter SKU"
+                    value={sku}
+                    onChange={(e) => setSku(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category *</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Lab Equipment">Lab Equipment</SelectItem>
+                      <SelectItem value="Furniture">Furniture</SelectItem>
+                      <SelectItem value="Medical">Medical</SelectItem>
+                      <SelectItem value="Sports Equipment">Sports Equipment</SelectItem>
+                      <SelectItem value="Stationery">Stationery</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="condition">Condition *</Label>
+                  <Select value={condition} onValueChange={setCondition}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select condition" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="New">New</SelectItem>
+                      <SelectItem value="Good">Good</SelectItem>
+                      <SelectItem value="Used">Used</SelectItem>
+                      <SelectItem value="Damaged">Damaged</SelectItem>
+                      <SelectItem value="Expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantity *</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    placeholder="Enter quantity"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="minStock">Minimum Stock *</Label>
+                  <Input
+                    id="minStock"
+                    type="number"
+                    placeholder="Enter min stock"
+                    value={minStock}
+                    onChange={(e) => setMinStock(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="unitPrice">Unit Price (₹) *</Label>
+                  <Input
+                    id="unitPrice"
+                    type="number"
+                    placeholder="Enter unit price"
+                    value={unitPrice}
+                    onChange={(e) => setUnitPrice(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expiryDate">Expiry Date</Label>
+                  <Input
+                    id="expiryDate"
+                    type="date"
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department *</Label>
+                  <Select value={department} onValueChange={setDepartment}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Information Technology">Information Technology</SelectItem>
+                      <SelectItem value="Chemistry">Chemistry</SelectItem>
+                      <SelectItem value="Administration">Administration</SelectItem>
+                      <SelectItem value="Health Center">Health Center</SelectItem>
+                      <SelectItem value="Engineering">Engineering</SelectItem>
+                      <SelectItem value="Physics">Physics</SelectItem>
+                      <SelectItem value="Mathematics">Mathematics</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supplier">Supplier *</Label>
+                  <Input
+                    id="supplier"
+                    placeholder="Enter supplier name"
+                    value={supplier}
+                    onChange={(e) => setSupplier(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location">Location *</Label>
+                <Input
+                  id="location"
+                  placeholder="Enter storage location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Enter item description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    resetForm();
+                    setItemDialogOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleAddItem}
+                  disabled={!itemName || !category || !sku || !quantity || !minStock || !unitPrice || !department || !location || !supplier}
+                >
+                  Add Item
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Summary Stats */}
