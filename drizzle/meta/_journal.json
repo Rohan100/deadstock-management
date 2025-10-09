@@ -15,6 +15,34 @@
       "when": 1752585622820,
       "tag": "0001_slow_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1752731363626,
+      "tag": "0002_clumsy_elektra",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1760009084926,
+      "tag": "0003_ambiguous_forgotten_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1760012165558,
+      "tag": "0004_nervous_patch",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1760024505543,
+      "tag": "0005_little_albert_cleary",
+      "breakpoints": true
     }
   ]
 }

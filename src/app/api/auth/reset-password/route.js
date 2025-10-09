@@ -1,4 +1,4 @@
-// pages/api/reset-password.js
+
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import db from '@/db';

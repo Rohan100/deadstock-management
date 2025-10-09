@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { set } from 'react-hook-form';
+import { Card } from '@/components/ui/card';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -15,7 +16,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch('/api/forget-password', {
+      const response = await fetch('/api/auth/forget-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -35,18 +36,17 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="container mx-auto max-w-md mt-10 p-6 bg-white rounded-xl shadow ">
+    <Card className="container mx-auto max-w-md mt-10 p-6 rounded-xl shadow ">
       <h1 className="text-2xl font-bold mb-6">Forgot Password</h1>
       
       {status === 'success' ? (
         <div className="bg-green-100 p-4 rounded mb-4">
           <p>If an account with that email exists, we've sent password reset instructions.</p>
-          <button 
-            className="mt-4 bg-blue-500 text-white py-2 px-4 rounded"
-            onClick={() => router.push('/login')}
+          <Link href="/auth/login"
+            className="mt-4  py-2 px-4 rounded"
           >
             Return to Login
-          </button>
+          </Link>
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
@@ -75,6 +75,6 @@ export default function ForgotPassword() {
           </Button>
         </form>
       )}
-    </div>
+    </Card>
   );
 }

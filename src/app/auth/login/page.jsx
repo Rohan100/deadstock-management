@@ -70,7 +70,7 @@ export default function LoginPage() {
             {error && (
               <div className="text-red-500 text-sm text-center">{error}</div>
             )}
-            <Link href={'/forget'} className="mt-3 w-full flex justify-end  text-sm">
+            <Link href={'/auth/forget-password'} className="mt-3 w-full flex justify-end  text-sm text-blue-700">
                 Forget Password?
             </Link>
           </CardContent>
