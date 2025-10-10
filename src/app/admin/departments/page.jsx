@@ -11,6 +11,8 @@ import {
   Filter,
   Grid3X3,
   List,
+  User,
+  MapPin,
 } from "lucide-react";
 import {
   Card,
@@ -46,13 +48,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const Department = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
+  const [isDepartmentDialogOpen, setDepartmentDialogOpen] = useState(false);
 
-  // Sample departments data
+  const [departmentName, setDepartmentName] = useState("");
+  const [head, setHead] = useState("");
+  const [location, setLocation] = useState("");
+  const [status, setStatus] = useState("Active");
+  const [description, setDescription] = useState("");
+
+ 
   const departments = [
     {
       id: 1,
@@ -136,7 +148,7 @@ const Department = () => {
     },
   ];
 
-  // Filter departments
+  
   const filteredDepartments = departments.filter((department) => {
     const matchesSearch =
       department.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -148,7 +160,33 @@ const Department = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Get status badge color
+  const handleAddDepartment = () => {
+ 
+    console.log("Adding department:", {
+      name: departmentName,
+      head: head,
+      location: location,
+      status: status,
+      description: description,
+      itemCount: 0,
+      totalValue: 0.0,
+      lastUpdated: new Date().toISOString().split('T')[0]
+    });
+    
+  
+    resetForm();
+    setDepartmentDialogOpen(false);
+  };
+
+  const resetForm = () => {
+    setDepartmentName("");
+    setHead("");
+    setLocation("");
+    setStatus("Active");
+    setDescription("");
+  };
+
+ 
   const getStatusColor = (status) => {
     switch (status) {
       case "Active":
@@ -162,7 +200,7 @@ const Department = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+     
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Departments</h1>
@@ -181,14 +219,104 @@ const Department = () => {
               <Grid3X3 className="h-4 w-4" />
             )}
           </Button>
-          <Button className="bg-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Department
-          </Button>
+
+          <Dialog open={isDepartmentDialogOpen} onOpenChange={(open) => {
+            setDepartmentDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Department
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Department</DialogTitle>
+                <DialogDescription>
+                  Create a new department for your college
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="departmentName">Department Name *</Label>
+                  <Input
+                    id="departmentName"
+                    placeholder="Enter department name"
+                    value={departmentName}
+                    onChange={(e) => setDepartmentName(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="head">Department Head *</Label>
+                  <Input
+                    id="head"
+                    placeholder="Enter department head name"
+                    value={head}
+                    onChange={(e) => setHead(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location *</Label>
+                    <Input
+                      id="location"
+                      placeholder="e.g., Block A"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status *</Label>
+                    <Select value={status} onValueChange={setStatus}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Enter department description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      resetForm();
+                      setDepartmentDialogOpen(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleAddDepartment}
+                    disabled={!departmentName || !head || !location || !status}
+                  >
+                    Add Department
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      {/* Filters */}
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -237,8 +365,30 @@ const Department = () => {
                     <Building className="h-8 w-8 text-blue-600" />
                   </div>
                   <CardTitle className="text-lg">{department.name}</CardTitle>
+                  <CardDescription className="flex items-center justify-center gap-1">
+                    <User className="h-3 w-3" />
+                    {department.head}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Badge className={getStatusColor(department.status)}>
+                      {department.status}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {department.itemCount} items
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    {department.location}
+                  </div>
+                  
+                  <div className="text-sm font-medium">
+                    ₹{department.totalValue.toLocaleString("en-IN")}
+                  </div>
+
                   <div className="flex justify-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

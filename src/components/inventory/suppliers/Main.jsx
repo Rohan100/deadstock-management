@@ -35,19 +35,29 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsContent, } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 const SuppliersMain = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedVendorType, setSelectedVendorType] = useState("all")
   const [viewMode, setViewMode] = useState("grid")
+  const [isVendorDialogOpen, setVendorDialogOpen] = useState(false)
+  
+  // Vendor form state
+  const [vendorName, setVendorName] = useState("")
+  const [vendorType, setVendorType] = useState("")
+  const [contactNo, setContactNo] = useState("")
+  const [address, setAddress] = useState("")
 
   // Sample vendors data matching schema
   const vendors = [
     {
       id: 1,
       name: "Tech Solutions India Pvt Ltd",
-      vendorType: "Electronics",
+      vendorType: "Electronics",  
       contactNo: "+91-9876543210",
       address: "123 Tech Park, Bangalore, Karnataka",
       createdByUserId: 1
@@ -119,6 +129,30 @@ const SuppliersMain = () => {
     return matchesSearch && matchesVendorType
   })
 
+  const handleAddVendor = () => {
+    // Here you would typically make an API call to add the vendor
+    console.log("Adding vendor:", {
+      name: vendorName,
+      vendorType: vendorType,
+      contactNo: contactNo,
+      address: address
+    })
+    
+    // Reset form and close dialog
+    setVendorName("")
+    setVendorType("")
+    setContactNo("")
+    setAddress("")
+    setVendorDialogOpen(false)
+  }
+
+  const resetForm = () => {
+    setVendorName("")
+    setVendorType("")
+    setContactNo("")
+    setAddress("")
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -131,10 +165,95 @@ const SuppliersMain = () => {
           <Button variant="outline" onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}>
             {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
           </Button>
-          <Button className="bg-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Vendor
-          </Button>
+
+          <Dialog open={isVendorDialogOpen} onOpenChange={(open) => {
+            setVendorDialogOpen(open)
+            if (!open) resetForm()
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Vendor
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Vendor</DialogTitle>
+                <DialogDescription>
+                  Add a new vendor to your supplier list
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vendorName">Vendor Name *</Label>
+                  <Input
+                    id="vendorName"
+                    placeholder="Enter vendor name"
+                    value={vendorName}
+                    onChange={(e) => setVendorName(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="vendorType">Vendor Type *</Label>
+                  <Select value={vendorType} onValueChange={setVendorType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select vendor type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Lab Equipment">Lab Equipment</SelectItem>
+                      <SelectItem value="Furniture">Furniture</SelectItem>
+                      <SelectItem value="Medical">Medical</SelectItem>
+                      <SelectItem value="Sports Equipment">Sports Equipment</SelectItem>
+                      <SelectItem value="Stationery">Stationery</SelectItem>
+                      <SelectItem value="Construction">Construction</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contactNo">Contact Number *</Label>
+                  <Input
+                    id="contactNo"
+                    placeholder="e.g., +91-9876543210"
+                    value={contactNo}
+                    onChange={(e) => setContactNo(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address *</Label>
+                  <Textarea
+                    id="address"
+                    placeholder="Enter vendor address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      resetForm()
+                      setVendorDialogOpen(false)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleAddVendor}
+                    disabled={!vendorName || !vendorType || !contactNo || !address}
+                  >
+                    Add Vendor
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

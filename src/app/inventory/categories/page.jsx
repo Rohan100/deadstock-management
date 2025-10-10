@@ -35,11 +35,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-
+import { Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle,DialogTrigger } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 const Category = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [viewMode, setViewMode] = useState("grid")
+    const [isCategoryDialogOpen, setCategoryDialogOpen] = useState(false)
+      const [categoryName, setCategoryName] = useState("")
+ const [description, setDescription] = useState("")
+  const [status, setStatus] = useState("Active")
+
 
   // Sample categories data
   const categories = [
@@ -107,6 +114,42 @@ const Category = () => {
     
     return matchesSearch && matchesStatus
   })
+   const handleAddCategory = () => {
+    // Here you would typically make an API call to add the category
+    console.log("Adding category:", {
+      name: categoryName,
+      description: description,
+      status: status,
+      itemCount: 0,
+      totalValue: 0.00,
+      lastUpdated: new Date().toISOString().split('T')[0]
+    })
+    
+    // Reset form and close dialog
+    resetForm()
+    setCategoryDialogOpen(false)
+  }
+
+  const resetForm = () => {
+    setCategoryName("")
+    setDescription("")
+    setStatus("Active")
+  }
+
+  const getStatusBadge = (status) => {
+    const statusColors = {
+      Active: "bg-green-100 text-green-800",
+      Critical: "bg-red-100 text-red-800",
+      Review: "bg-yellow-100 text-yellow-800",
+      Inactive: "bg-gray-100 text-gray-800"
+    }
+    
+    return (
+      <Badge className={statusColors[status] || "bg-gray-100"}>
+        {status}
+      </Badge>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -120,10 +163,80 @@ const Category = () => {
           <Button variant="outline" onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}>
             {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
           </Button>
-          <Button className="bg-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Category
-          </Button>
+         <Dialog open={isCategoryDialogOpen} onOpenChange={(open) => {
+            setCategoryDialogOpen(open)
+            if (!open) resetForm()
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Category
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Category</DialogTitle>
+                <DialogDescription>
+                  Create a new category to organize your inventory items
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="categoryName">Category Name *</Label>
+                  <Input
+                    id="categoryName"
+                    placeholder="Enter category name"
+                    value={categoryName}
+                    onChange={(e) => setCategoryName(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description *</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Enter category description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status *</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Critical">Critical</SelectItem>
+                      <SelectItem value="Review">Review</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      resetForm()
+                      setCategoryDialogOpen(false)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleAddCategory}
+                    disabled={!categoryName || !description || !status}
+                  >
+                    Add Category
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
