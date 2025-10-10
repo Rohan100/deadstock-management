@@ -43,6 +43,27 @@
       "when": 1760024505543,
       "tag": "0005_little_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1760118706778,
+      "tag": "0006_jittery_scorpion",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1760120336123,
+      "tag": "0007_ambiguous_wraith",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1760122915566,
+      "tag": "0008_silky_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }
