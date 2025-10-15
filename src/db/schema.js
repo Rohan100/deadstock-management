@@ -9,6 +9,7 @@ import {
   timestamp,
   date,
   serial,
+  pgEnum
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -153,7 +154,7 @@ export const purchaseHistory = pgTable("purchase_history", {
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
 });
 
-// ---------------------- Warehouse Stock ----------------------
+
 export const warehouseStock = pgTable("warehouse_stock", {
   warehouseStockId: serial("warehouse_stock_id").primaryKey(),
   itemId: integer("item_id").notNull().references(() => items.itemId),
@@ -171,4 +172,119 @@ export const purchaseHistoryRelations = relations(purchaseHistory, ({ one }) => 
 
 export const warehouseStockRelations = relations(warehouseStock, ({ one }) => ({
   item: one(items, { fields: [warehouseStock.itemId], references: [items.itemId] }),
+}));
+
+export const conditionStatusEnum = pgEnum("condition_status_enum", [
+  "New",
+  "Good",
+  "Fair",
+  "Poor",
+  "Damaged",
+]);
+
+export const labStock = pgTable("lab_stock", {
+  labStockId: serial("lab_stock_id").primaryKey(),
+  itemId: integer("item_id")
+    .notNull()
+    .references(() => items.itemId, { onDelete: "cascade" }),
+  labId: integer("lab_id")
+    .notNull()
+    .references(() => labs.labId, { onDelete: "cascade" }),
+  quantity: integer("quantity").default(1),
+  conditionStatus: conditionStatusEnum("condition_status").default("New"),
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: false })
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+// 🔹 Relationships
+export const labStockRelations = relations(labStock, ({ one }) => ({
+  item: one(items, {
+    fields: [labStock.itemId],
+    references: [items.itemId],
+  }),
+  lab: one(labs, {
+    fields: [labStock.labId],
+    references: [labs.labId],
+  }),
+}));
+
+export const transferTypeEnum = pgEnum("transfer_type_enum", [
+  "Warehouse to Lab",
+  "Lab to Lab",
+  "Lab to Warehouse",
+]);
+
+
+export const stockTransfers = pgTable("stock_transfers", {
+  transferId: serial("transfer_id").primaryKey(),
+  itemId: integer("item_id")
+    .notNull()
+    .references(() => items.itemId, { onDelete: "cascade" }),
+  transferType: transferTypeEnum("transfer_type").notNull(),
+  fromLabId: integer("from_lab_id").references(() => labs.labId),
+  toLabId: integer("to_lab_id").references(() => labs.labId),
+  quantity: integer("quantity").notNull(),
+  transferDate: timestamp("transfer_date", { withTimezone: false }).defaultNow(),
+  performedBy: integer("performed_by")
+    .notNull()
+    .references(() => usersTable.id),
+  remarks: text("remarks"),
+});
+
+export const stockTransfersRelations = relations(stockTransfers, ({ one }) => ({
+  item: one(items, {
+    fields: [stockTransfers.itemId],
+    references: [items.itemId],
+  }),
+  fromLab: one(labs, {
+    fields: [stockTransfers.fromLabId],
+    references: [labs.labId],
+  }),
+  toLab: one(labs, {
+    fields: [stockTransfers.toLabId],
+    references: [labs.labId],
+  }),
+  performedByUser: one(usersTable, {
+    fields: [stockTransfers.performedBy],
+    references: [usersTable.id],
+  }),
+
+}));
+
+
+export const disposalMethodEnum = pgEnum("disposal_method_enum", [
+  "Sale",
+  "Donation",
+  "Scrap",
+  "E-Waste",
+  "Other",
+]);
+
+// 🔹 Table Definition
+export const disposalRecords = pgTable("disposal_records", {
+  disposalId: serial("disposal_id").primaryKey(),
+  labId: integer("lab_id")
+    .references(() => labs.labId, { onDelete: "cascade" }),
+  itemId: integer("item_id")
+    .references(() => items.itemId, { onDelete: "cascade" }),
+  disposalDate: date("disposal_date").notNull().defaultNow(),
+  disposalMethod: disposalMethodEnum("disposal_method").notNull(),
+  disposalReason: text("disposal_reason"),
+  disposalQuantity: integer("disposal_quantity"),
+  remarks: text("remarks"),
+});
+
+
+export const disposalRecordsRelations = relations(disposalRecords, ({ one }) => ({
+  lab: one(labs, {
+    fields: [disposalRecords.labId],
+    references: [labs.labId],
+  }),
+  item: one(items, {
+    fields: [disposalRecords.itemId],
+    references: [items.itemId],
+  }),
 }));
