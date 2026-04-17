@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   FolderOpen, 
   Search, 
@@ -38,102 +38,91 @@ import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle,DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { toast } from "sonner"
+
+
 const Category = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [viewMode, setViewMode] = useState("grid")
-    const [isCategoryDialogOpen, setCategoryDialogOpen] = useState(false)
-      const [categoryName, setCategoryName] = useState("")
- const [description, setDescription] = useState("")
+  const [isCategoryDialogOpen, setCategoryDialogOpen] = useState(false)
+  const [categoryName, setCategoryName] = useState("")
+  const [description, setDescription] = useState("")
   const [status, setStatus] = useState("Active")
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingCategoryId, setEditingCategoryId] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+const [categoryToDelete, setCategoryToDelete] = useState(null)
 
 
-  // Sample categories data
-  const categories = [
-    {
-      id: 1,
-      name: "Electronics",
-      description: "Computers, laptops, projectors, and electronic equipment",
-      itemCount: 142,
-      totalValue: 2850000.00,
-      status: "Active",
-      lastUpdated: "2024-07-11"
-    },
-    {
-      id: 2,
-      name: "Lab Equipment",
-      description: "Scientific instruments, glassware, and laboratory supplies",
-      itemCount: 89,
-      totalValue: 1650000.00,
-      status: "Active",
-      lastUpdated: "2024-07-09"
-    },
-    {
-      id: 3,
-      name: "Furniture",
-      description: "Office furniture, classroom chairs, desks, and storage",
-      itemCount: 234,
-      totalValue: 980000.00,
-      status: "Active",
-      lastUpdated: "2024-07-08"
-    },
-    {
-      id: 4,
-      name: "Medical Supplies",
-      description: "Medical equipment, supplies, and pharmaceutical items",
-      itemCount: 67,
-      totalValue: 450000.00,
-      status: "Critical",
-      lastUpdated: "2024-07-07"
-    },
-    {
-      id: 5,
-      name: "Sports Equipment",
-      description: "Athletic equipment, sports gear, and recreational items",
-      itemCount: 156,
-      totalValue: 320000.00,
-      status: "Active",
-      lastUpdated: "2024-07-10"
-    },
-    {
-      id: 6,
-      name: "Stationery & Office Supplies",
-      description: "Paper, pens, printing supplies, and office consumables",
-      itemCount: 78,
-      totalValue: 125000.00,
-      status: "Review",
-      lastUpdated: "2024-07-06"
-    }
-  ]
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   // Filter categories
-  const filteredCategories = categories.filter(category => {
-    const matchesSearch = category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         category.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = selectedStatus === "all" || category.status.toLowerCase() === selectedStatus.toLowerCase()
-    
+  const filteredCategories = categories.filter((category) => {
+    const name = category.name?.toLowerCase() || ""
+    const description = category.description?.toLowerCase() || ""
+    const search = searchTerm.toLowerCase()
+
+    const matchesSearch =
+      name.includes(search) || description.includes(search)
+
+    const matchesStatus =
+      selectedStatus === "all" ||
+      category.status?.toLowerCase() === selectedStatus.toLowerCase()
+
     return matchesSearch && matchesStatus
   })
-   const handleAddCategory = () => {
-    // Here you would typically make an API call to add the category
-    console.log("Adding category:", {
-      name: categoryName,
-      description: description,
-      status: status,
-      itemCount: 0,
-      totalValue: 0.00,
-      lastUpdated: new Date().toISOString().split('T')[0]
-    })
-    
-    // Reset form and close dialog
-    resetForm()
-    setCategoryDialogOpen(false)
-  }
 
   const resetForm = () => {
     setCategoryName("")
     setDescription("")
     setStatus("Active")
+    setIsEditMode(false)
+    setEditingCategoryId(null)
+  }
+
+  const handleAddCategory = async () => {
+    if (!categoryName.trim() || !description.trim()) {
+      toast.error("Please fill all required fields")
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          categoryName: categoryName.trim(),
+          description: description.trim(),
+          status,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to add category")
+        return
+      }
+
+      await fetchCategories()
+      toast.success("Category added successfully")
+      resetForm()
+      setCategoryDialogOpen(false)
+    } catch (error) {
+      console.error("Error adding category:", error)
+      toast.error("Something went wrong while adding category")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const getStatusBadge = (status) => {
@@ -151,8 +140,144 @@ const Category = () => {
     )
   }
 
+  const fetchCategories = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch("/api/categories")
+      const data = await res.json()
+
+      // Map DB fields → UI fields
+      const formatted = data.map((cat) => ({
+        id: cat.categoryId,
+        name: cat.categoryName,
+        description: cat.description,
+        status: cat.status || "Active",
+        itemCount: 0,
+        totalValue: 0,
+        lastUpdated: cat.updatedAt?.split("T")[0] || cat.createdAt?.split("T")[0],
+      }))
+
+      setCategories(formatted)
+    } catch (err) {
+      console.error("Failed to fetch categories", err)
+      toast.error("Failed to load categories")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const confirmDeleteCategory = async () => {
+  if (!categoryToDelete?.id) return
+
+  try {
+    const res = await fetch(`/api/categories/${categoryToDelete.id}`, {
+      method: "DELETE",
+    })
+
+    const data = await res.json()
+
+    if (res.ok) {
+      toast.success("Category deleted successfully")
+      fetchCategories()
+    } else {
+      toast.error(data.error || "Failed to delete category")
+    }
+  } catch (error) {
+    toast.error("Something went wrong")
+  } finally {
+    setIsDeleteDialogOpen(false)
+    setCategoryToDelete(null)
+  }
+}
+
+
+  // Open edit dialog with category data
+  const openEditDialog = (category) => {
+    setIsEditMode(true)
+    setEditingCategoryId(category.id)
+    setCategoryName(category.name || "")
+    setDescription(category.description || "")
+    setStatus(category.status || "Active")
+    setCategoryDialogOpen(true)
+  }
+
+  
+  const handleSubmit = async () => {
+    if (!categoryName.trim() || !description.trim()) {
+      toast.error("Please fill all required fields")
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      
+      if (isEditMode && editingCategoryId) {
+        // Update existing category
+        const res = await fetch(`/api/categories/${editingCategoryId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            categoryName: categoryName.trim(),
+            description: description.trim(),
+            status,
+          }),
+        })
+
+        const data = await res.json()
+
+        if (res.ok) {
+          toast.success(data.message || "Category updated successfully")
+          fetchCategories()
+          resetForm()
+          setCategoryDialogOpen(false)
+        } else {
+          toast.error(data.error || "Failed to update category")
+        }
+      } else {
+        // Add new category
+        const res = await fetch("/api/categories", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            categoryName: categoryName.trim(),
+            description: description.trim(),
+            status,
+          }),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+          toast.error(data.error || "Failed to add category")
+          return
+        }
+
+        await fetchCategories()
+        toast.success("Category added successfully")
+        resetForm()
+        setCategoryDialogOpen(false)
+      }
+    } catch (error) {
+      console.error("Error saving category:", error)
+      toast.error("Something went wrong")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+  const handleDeleteClick = (category) => {
+  setCategoryToDelete(category)
+  setIsDeleteDialogOpen(true)
+}
+
+
   return (
     <div className="space-y-6">
+     
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -163,7 +288,7 @@ const Category = () => {
           <Button variant="outline" onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}>
             {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
           </Button>
-         <Dialog open={isCategoryDialogOpen} onOpenChange={(open) => {
+          <Dialog open={isCategoryDialogOpen} onOpenChange={(open) => {
             setCategoryDialogOpen(open)
             if (!open) resetForm()
           }}>
@@ -175,9 +300,9 @@ const Category = () => {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Add New Category</DialogTitle>
+                <DialogTitle>{isEditMode ? "Edit Category" : "Add New Category"}</DialogTitle>
                 <DialogDescription>
-                  Create a new category to organize your inventory items
+                  {isEditMode ? "Update category details" : "Create a new category to organize your inventory items"}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -228,10 +353,10 @@ const Category = () => {
                     Cancel
                   </Button>
                   <Button 
-                    onClick={handleAddCategory}
-                    disabled={!categoryName || !description || !status}
+                    onClick={handleSubmit}
+                    disabled={!categoryName.trim() || !description.trim() || submitting}
                   >
-                    Add Category
+                    {submitting ? "Saving..." : isEditMode ? "Update Category" : "Add Category"}
                   </Button>
                 </div>
               </div>
@@ -278,110 +403,35 @@ const Category = () => {
       </Card>
 
       {/* Content */}
-      <Tabs value={viewMode} onValueChange={setViewMode}>
-        <TabsContent value="grid">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCategories.map((category) => (
-              <Card key={category.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">{category.name}</CardTitle>
-                      <CardDescription className="text-sm">
-                        {category.description}
-                      </CardDescription>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Category
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                 
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-gray-500" />
-                        Total Items
-                      </span>
-                      <span className="font-medium">{category.itemCount}</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center text-sm">
-                      <span>Total Value</span>
-                      <span className="font-semibold">₹{category.totalValue.toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Loading categories...</p>
+        </div>
+      ) : (
+        <Tabs value={viewMode} onValueChange={setViewMode}>
+          <TabsContent value="grid">
+            {filteredCategories.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium">No categories found</h3>
+                  
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="table">
-          <Card>
-            <CardHeader>
-              <CardTitle>Categories Overview</CardTitle>
-              <CardDescription>
-                {filteredCategories.length} category(ies) found
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Items</TableHead>
-                      <TableHead>Value</TableHead>
-                      <TableHead>Last Updated</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCategories.map((category) => (
-                      <TableRow key={category.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{category.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {category.description}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{category.itemCount}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            ₹{category.totalValue.toLocaleString('en-IN')}
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell className="text-sm text-muted-foreground">
-                          {category.lastUpdated}
-                        </TableCell>
-                        <TableCell className="text-right">
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredCategories.map((category) => (
+                  <Card key={category.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <CardTitle className="text-lg">{category.name}</CardTitle>
+                          <CardDescription className="text-sm">
+                            {category.description}
+                          </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {getStatusBadge(category.status)}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -394,27 +444,182 @@ const Category = () => {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(category)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Category
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600">
+                              <DropdownMenuItem 
+                                className="text-red-600" 
+                                onClick={() => handleDeleteClick(category)}
+
+                              >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-gray-500" />
+                            Total Items
+                          </span>
+                          <span className="font-medium">{category.itemCount}</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center text-sm">
+                          <span>Total Value</span>
+                          <span className="font-semibold">₹{(category.totalValue || 0).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            )}
+          </TabsContent>
+
+          <TabsContent value="table">
+            <Card>
+              <CardHeader>
+                <CardTitle>Categories Overview</CardTitle>
+                <CardDescription>
+                  {filteredCategories.length} category(ies) found
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Items</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>Last Updated</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCategories.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-12">
+                            <div className="flex flex-col items-center justify-center">
+                              <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
+                              <h3 className="text-lg font-medium">No categories found</h3>
+                              <p className="text-muted-foreground text-center mt-2">
+                                {searchTerm || selectedStatus !== "all" 
+                                  ? "Try adjusting your search or filter criteria"
+                                  : "Get started by creating your first category"
+                                }
+                              </p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredCategories.map((category) => (
+                          <TableRow key={category.id}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{category.name}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {category.description}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(category.status)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">{category.itemCount}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">
+                                ₹{(category.totalValue || 0).toLocaleString('en-IN')}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {category.lastUpdated || "N/A"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openEditDialog(category)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit Category
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    className="text-red-600"
+                                   onClick={() => handleDeleteClick(category)}
+
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+  <DialogContent className="sm:max-w-[400px]">
+    <DialogHeader>
+      <DialogTitle>Delete Category</DialogTitle>
+      <DialogDescription>
+        Are you sure you want to delete{" "}
+        <span className="font-semibold">
+          {categoryToDelete?.name}
+        </span>
+        ? This action cannot be undone.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="flex justify-end gap-2 pt-4">
+      <Button
+        variant="outline"
+        onClick={() => {
+          setIsDeleteDialogOpen(false)
+          setCategoryToDelete(null)
+        }}
+      >
+        Cancel
+      </Button>
+
+      <Button
+         className="bg-red-600 hover:bg-red-700 text-white"
+        onClick={confirmDeleteCategory}
+      >
+        Delete
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
     </div>
   )
 }

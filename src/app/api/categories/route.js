@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function POST(request) {
     try {
-        const { categoryName, description } = await request.json()
+        const { categoryName, description,status } = await request.json()
         if (!categoryName) {
             return NextResponse.json({ error: 'Category name is required' }, { status: 400 })
         }
@@ -32,6 +32,7 @@ export async function POST(request) {
         const newCategory = await db.insert(categories).values({
             categoryName,
             description,
+            status
         }).returning()
 
         return NextResponse.json(newCategory[0], { status: 201 })

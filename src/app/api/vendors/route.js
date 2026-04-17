@@ -28,7 +28,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const data = await request.json();
-    const { vendorName, contactPerson, email, phone, address, gstin } = data;
+    const { vendorName,vendorType, contactPerson, email, phone, address, gstin } = data;
     if (!vendorName) {
       return NextResponse.json(
         { message: "Vendor name is required" },
@@ -37,7 +37,7 @@ export async function POST(request) {
     }
     const newVendor = await db
       .insert(vendors)
-      .values({ vendorName, contactPerson, email, phone, address, gstin })
+      .values({ vendorName,vendorType, contactPerson, email, phone, address, gstin })
       .returning();
     return NextResponse.json(newVendor[0], { status: 201 });
   } catch (error) {

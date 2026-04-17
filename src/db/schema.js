@@ -13,13 +13,24 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-
+export const itemConditionEnum = pgEnum("item_condition_enum", [
+  "New",
+  "Good",
+  "Used",
+  "Damaged",
+]);
+export const itemStatusEnum = pgEnum("item_status_enum", [
+  "Active",
+  "Low Stock",
+  "Out of Stock",
+]);
 
 
 export const categories = pgTable("categories", {
   categoryId: serial("category_id").primaryKey(),
   categoryName: varchar("category_name", { length: 100 }).notNull(),
   description: text("description"),
+  status: text("status").notNull().default("Active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -61,6 +72,7 @@ export const usersTable = pgTable("users", {
 export const vendors = pgTable("vendors", {
   vendorId: serial("vendor_id").primaryKey(),
   vendorName: varchar("vendor_name", { length: 150 }).notNull(),
+  vendorType: varchar("vendorType", { length: 50 }).notNull(),
   contactPerson: varchar("contact_person", { length: 100 }),
   email: varchar("email", { length: 100 }),
   phone: varchar("phone", { length: 15 }),
@@ -84,7 +96,7 @@ export const labs = pgTable("labs", {
   labName: varchar("lab_name", { length: 100 }).notNull(),
   labCode: varchar("lab_code", { length: 50 }).unique(),
   floorNumber: integer("floor_number"),
-  labType: varchar("lab_type", { length: 50 }), // e.g., 'Computer Lab', 'IoT Lab'
+  labType: varchar("lab_type", { length: 50 }), 
   capacity: integer("capacity"),
   inChargeName: varchar("in_charge_name", { length: 100 }),
   inChargeContact: varchar("in_charge_contact", { length: 15 }),
@@ -105,27 +117,57 @@ export const items = pgTable(
   "items",
   {
     itemId: serial("item_id").primaryKey(),
+
+   
     itemName: varchar("item_name", { length: 200 }).notNull(),
+    sku: varchar("sku", { length: 100 }).notNull(),
+
+   
     categoryId: integer("category_id")
       .notNull()
-      .references(() => categories.categoryId),
-    subCategoryId: integer("sub_category_id").references(() => subCategories.subCategoryId),
-    brand: varchar("brand", { length: 100 }),
-    modelNumber: varchar("model_number", { length: 100 }),
-    specifications: text("specifications"), // can store JSON string
-    unitOfMeasurement: varchar("unit_of_measurement", { length: 20 }), // e.g., 'piece', 'meter', 'set'
+      .references(() => categories.categoryId, { onDelete: "restrict" }),
+
+    subCategoryId: integer("sub_category_id")
+      .references(() => subCategories.subCategoryId, { onDelete: "set null" }),
+
+    
+    quantity: integer("quantity").notNull().default(0),
+    minStock: integer("min_stock").notNull().default(0),
+
+    unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+
+    status: itemStatusEnum("status").notNull().default("Active"),
+
+   
+    department: varchar("department", { length: 100 }).notNull(),
+
+    supplierId: integer("supplier_id")
+      .references(() => vendors.vendorId, { onDelete: "set null" }),
+
+    location: varchar("location", { length: 150 }).notNull(),
+
+   
+    condition: itemConditionEnum("condition")
+      .notNull()
+      .default("New"),
+
+    isConsumable: boolean("is_consumable").notNull().default(false),
+    isActive: boolean("is_active").notNull().default(true),
+
+   
     description: text("description"),
-    createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
+
+    createdAt: timestamp("created_at", { withTimezone: false })
+      .notNull()
+      .defaultNow(),
+
     updatedAt: timestamp("updated_at", { withTimezone: false })
+      .notNull()
       .defaultNow()
-      .$onUpdate(() => new Date()), // mimic ON UPDATE CURRENT_TIMESTAMP
+      .$onUpdate(() => new Date()),
   },
   (table) => ({
-    uniqueItem: unique("unique_item").on(
-      table.itemName,
-      table.brand,
-      table.modelNumber
-    ),
+    uniqueSku: unique("unique_sku").on(table.sku),
   })
 );
 
@@ -134,11 +176,18 @@ export const itemsRelations = relations(items, ({ one }) => ({
     fields: [items.categoryId],
     references: [categories.categoryId],
   }),
+
   subCategory: one(subCategories, {
     fields: [items.subCategoryId],
     references: [subCategories.subCategoryId],
   }),
+
+  supplier: one(vendors, {
+    fields: [items.supplierId],
+    references: [vendors.vendorId],
+  }),
 }));
+
 
 export const purchaseHistory = pgTable("purchase_history", {
   purchaseId: serial("purchase_id").primaryKey(),

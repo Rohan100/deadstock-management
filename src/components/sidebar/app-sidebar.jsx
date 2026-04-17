@@ -88,6 +88,10 @@ const data = {
           title: "Categories",
           url: "/inventory/categories",
         },
+        {
+          title: "Sub-Categories",
+          url: "/inventory/subcategory",
+        },
         // {
         //   title: "Stock Levels",
         //   url: "/inventory/stock",
@@ -172,7 +176,7 @@ export function AppSidebar({
   ...props
 }) {
   return (
-    (<Sidebar collapsible="icon" {...props}>
+    (<Sidebar collapsible="icon" variant="inset" {...props}>
       <SidebarHeader>
         
         <TeamSwitcher teams={data.teams} />

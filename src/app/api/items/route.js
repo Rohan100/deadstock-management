@@ -1,64 +1,79 @@
-import { items } from '@/db/schema.js';
-import db from '@/db'
-import { NextResponse } from 'next/server'
-import { eq, and } from 'drizzle-orm'
+import { items } from "@/db/schema";
+import db from "@/db";
+import { NextResponse } from "next/server";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(request) {
-    try {
-        const {searchParams} = new URL(request.url)
-        const categoryId = searchParams.get('categoryId')
-        const subCategoryId = searchParams.get('subCategoryId')
-        let query = db.select().from(items)
-        if (categoryId) {
-            query = query.where(eq(items.categoryId, parseInt(categoryId)))
-        }
-        if (subCategoryId) {
-            query = query.where(eq(items.subCategoryId, parseInt(subCategoryId)))
-        }
+  try {
+    const { searchParams } = new URL(request.url);
+    const categoryId = searchParams.get("categoryId");
+    const subCategoryId = searchParams.get("subCategoryId");
 
-        const allItems = await query
-        return NextResponse.json(allItems, { status: 200 })
+    let query = db.select().from(items);
+    const conditions = [];
+
+    if (categoryId) conditions.push(eq(items.categoryId, Number(categoryId)));
+    if (subCategoryId) conditions.push(eq(items.subCategoryId, Number(subCategoryId)));
+
+    if (conditions.length) {
+      query = query.where(and(...conditions));
     }
-    catch (error) {
-        console.error('Error fetching items:', error)
-        return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 })
-    }
+
+    const allItems = await query;
+    return NextResponse.json(allItems, { status: 200 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Failed to fetch items" }, { status: 500 });
+  }
 }
 
 export async function POST(request) {
-    try {
-        const {
-            itemName,
-            categoryId,
-            subCategoryId,
-            brand,
-            modelNumber,
-            specifications, // can store JSON string
-            unitOfMeasurement, // e.g., 'piece', 'meter', 'set'
-            description, } = await request.json()
-        if (!itemName || !categoryId) {
-            return NextResponse.json({ error: 'Item name and Category ID are required' }, { status: 400 })
-        }
-        const existingItem = await db.select()
-            .from(items)
-            .where(and(eq(items.itemName, itemName), eq(items.brand, brand), eq(items.modelNumber, modelNumber)))
-            .limit(1)
-        if (existingItem.length > 0) {
-            return NextResponse.json({ error: 'Item with the same name, brand, and model number already exists' }, { status: 409 })
-        }
-        const newItem = await db.insert(items).values({
-            itemName,
-            categoryId,
-            subCategoryId,
-            brand,
-            modelNumber,
-            specifications,
-            unitOfMeasurement,
-            description,
-        }).returning()
-        return NextResponse.json(newItem[0], { status: 201 })
-    } catch (error) {
-        console.error('Error creating item:', error)
-        return NextResponse.json({ error: 'Failed to create item' }, { status: 500 })
+  try {
+    const data = await request.json();
+
+    // Required fields validation
+    if (
+      !data.itemName ||
+      !data.sku ||
+      !data.categoryId ||
+      data.unitPrice == null
+    ) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
+
+    // SKU must be unique
+    const existing = await db
+      .select()
+      .from(items)
+      .where(eq(items.sku, data.sku))
+      .limit(1);
+
+    if (existing.length) {
+      return NextResponse.json({ error: "SKU already exists" }, { status: 409 });
+    }
+
+    const newItem = await db.insert(items).values({
+      itemName: data.itemName,
+      sku: data.sku,
+      categoryId: data.categoryId,
+      subCategoryId: data.subCategoryId ?? null,
+      quantity: data.quantity ?? 0,
+      minStock: data.minStock ?? 0,
+      unitPrice: data.unitPrice,
+      department: data.department,
+      supplierId: data.supplierId ?? null,
+      location: data.location,
+      condition: data.condition ?? "New",
+      isConsumable: data.isConsumable ?? false,
+      description: data.description ?? null
+    }).returning();
+
+    return NextResponse.json(newItem[0], { status: 201 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Failed to create item" }, { status: 500 });
+  }
 }

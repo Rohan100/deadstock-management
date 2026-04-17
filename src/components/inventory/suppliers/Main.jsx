@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState,useEffect } from 'react'
 import { 
   Truck, 
   Search, 
@@ -39,119 +39,146 @@ import { Tabs, TabsContent, } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Toaster, toast } from 'sonner'
 
 const SuppliersMain = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedVendorType, setSelectedVendorType] = useState("all")
   const [viewMode, setViewMode] = useState("grid")
   const [isVendorDialogOpen, setVendorDialogOpen] = useState(false)
-  
-  // Vendor form state
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false)
+const [vendorToDelete, setVendorToDelete] = useState(null)
   const [vendorName, setVendorName] = useState("")
   const [vendorType, setVendorType] = useState("")
   const [contactNo, setContactNo] = useState("")
   const [address, setAddress] = useState("")
+  const [vendors, setVendors] = useState([])
+const [loading, setLoading] = useState(true)
 
-  // Sample vendors data matching schema
-  const vendors = [
-    {
-      id: 1,
-      name: "Tech Solutions India Pvt Ltd",
-      vendorType: "Electronics",  
-      contactNo: "+91-9876543210",
-      address: "123 Tech Park, Bangalore, Karnataka",
-      createdByUserId: 1
-    },
-    {
-      id: 2,
-      name: "Scientific Instruments Corp",
-      vendorType: "Lab Equipment",
-      contactNo: "+91-8765432109",
-      address: "456 Science Avenue, Mumbai, Maharashtra",
-      createdByUserId: 2
-    },
-    {
-      id: 3,
-      name: "Office Furniture Plus",
-      vendorType: "Furniture",
-      contactNo: "+91-7654321098",
-      address: "789 Business District, Delhi",
-      createdByUserId: 1
-    },
-    {
-      id: 4,
-      name: "MedSupply Corporation",
-      vendorType: "Medical",
-      contactNo: "+91-6543210987",
-      address: "321 Medical Plaza, Chennai, Tamil Nadu",
-      createdByUserId: 3
-    },
-    {
-      id: 5,
-      name: "Sports Gear India",
-      vendorType: "Sports Equipment",
-      contactNo: "+91-5432109876",
-      address: "654 Sports Complex, Pune, Maharashtra",
-      createdByUserId: 2
-    },
-    {
-      id: 6,
-      name: "Stationery World",
-      vendorType: "Stationery",
-      contactNo: "+91-4321098765",
-      address: "987 Office Supplies Street, Ahmedabad, Gujarat",
-      createdByUserId: 1
-    },
-    {
-      id: 7,
-      name: "Dell Technologies India",
-      vendorType: "Electronics",
-      contactNo: "+91-3210987654",
-      address: "147 IT Hub, Hyderabad, Telangana",
-      createdByUserId: 3
-    },
-    {
-      id: 8,
-      name: "Construction Materials Ltd",
-      vendorType: "Construction",
-      contactNo: "+91-2109876543",
-      address: "258 Building Supplies Road, Jaipur, Rajasthan",
-      createdByUserId: 2
-    }
-  ]
+
+    useEffect(() => {
+  fetchVendors()
+}, [])
+useEffect(() => {
+  const handleInputEvent = (e) => {
+    const { name, value } = e.target;
+    if (name === "vendorName") setVendorName(value);
+    if (name === "contactNo") setContactNo(value);
+    if (name === "address") setAddress(value);
+  };
+
+  const inputs = [
+    document.getElementById("vendorName"),
+    document.getElementById("contactNo"),
+    document.getElementById("address"),
+  ];
+
+  inputs.forEach(input => input?.addEventListener("input", handleInputEvent));
+
+  return () => {
+    inputs.forEach(input => input?.removeEventListener("input", handleInputEvent));
+  };
+}, []);
+
+const fetchVendors = async () => {
+  try {
+    setLoading(true)
+    const res = await fetch("/api/vendors")
+    const data = await res.json()
+    setVendors(data)
+  } catch (error) {
+    console.error("Failed to fetch vendors", error)
+  } finally {
+    setLoading(false)
+  }
+}
+const resetForm = () => {
+  setVendorName("")
+  setVendorType("")
+  setContactNo("")
+  setAddress("")
+}
+
+  
 
   const filteredVendors = vendors.filter(vendor => {
-    const matchesSearch = vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         vendor.contactNo.includes(searchTerm) ||
-                         vendor.address.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesVendorType = selectedVendorType === "all" || vendor.vendorType.toLowerCase() === selectedVendorType.toLowerCase()
-    
-    return matchesSearch && matchesVendorType
-  })
+  const matchesSearch =
+    vendor.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (vendor.phone ?? "").includes(searchTerm) ||
+    (vendor.address ?? "").toLowerCase().includes(searchTerm.toLowerCase());
 
-  const handleAddVendor = () => {
-    // Here you would typically make an API call to add the vendor
-    console.log("Adding vendor:", {
-      name: vendorName,
-      vendorType: vendorType,
-      contactNo: contactNo,
-      address: address
+  const matchesVendorType =
+    selectedVendorType === "all" ||
+    vendor.vendorType?.toLowerCase() === selectedVendorType.toLowerCase();
+
+  return matchesSearch && matchesVendorType;
+});
+
+
+
+
+ const handleAddVendor = async () => {
+  try {
+    const res = await fetch("/api/vendors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vendorName,
+        phone: contactNo,
+        vendorType,
+        address,
+        contactPerson: "",
+        email: "",
+        gstin: "",
+      }),
+    });
+
+    if (!res.ok) throw new Error("Failed to add vendor");
+    const newVendor = await res.json();
+
+    setVendors(prev => [newVendor, ...prev]);
+    resetForm();
+    setVendorDialogOpen(false);
+
+   
+    setSearchTerm("");
+
+    toast.success("Vendor added successfully", { id: "add-vendor" });
+  } catch (error) {
+    toast.error("Something went wrong", { id: "add-vendor" });
+  }
+};
+
+const handleDeleteVendor = async (id) => {
+  try {
+    toast.loading("Deleting vendor...", { id: "delete-vendor" })
+
+    const res = await fetch(`/api/vendors/${id}`, {
+      method: "DELETE",
     })
-    
-    // Reset form and close dialog
-    setVendorName("")
-    setVendorType("")
-    setContactNo("")
-    setAddress("")
-    setVendorDialogOpen(false)
-  }
 
-  const resetForm = () => {
-    setVendorName("")
-    setVendorType("")
-    setContactNo("")
-    setAddress("")
+    const data = await res.json()
+
+    if (!res.ok) {
+      toast.error(data.error || "Delete failed", {
+        id: "delete-vendor",
+      })
+      return
+    }
+
+    setVendors((prev) => prev.filter((v) => v.vendorId !== id))
+
+    toast.success("Vendor deleted successfully", {
+      id: "delete-vendor",
+    })
+  } catch (error) {
+    toast.error("Something went wrong", {
+      id: "delete-vendor",
+    })
   }
+}
+
+
 
   return (
     <div className="space-y-6">
@@ -189,6 +216,9 @@ const SuppliersMain = () => {
                   <Input
                     id="vendorName"
                     placeholder="Enter vendor name"
+                     name="vendorName"
+                     
+                     autoComplete="organization"
                     value={vendorName}
                     onChange={(e) => setVendorName(e.target.value)}
                   />
@@ -217,6 +247,8 @@ const SuppliersMain = () => {
                   <Label htmlFor="contactNo">Contact Number *</Label>
                   <Input
                     id="contactNo"
+                     name="contactNo"
+                      autoComplete="tel"
                     placeholder="e.g., +91-9876543210"
                     value={contactNo}
                     onChange={(e) => setContactNo(e.target.value)}
@@ -228,6 +260,7 @@ const SuppliersMain = () => {
                   <Textarea
                     id="address"
                     placeholder="Enter vendor address"
+                    autoComplete="street-address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     rows={3}
@@ -297,16 +330,41 @@ const SuppliersMain = () => {
         </CardContent>
       </Card>
 
-      {/* Content */}
+     
       <Tabs value={viewMode} onValueChange={setViewMode}>
         <TabsContent value="grid">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVendors.map((vendor) => (
-              <Card key={vendor.id} className="hover:shadow-md transition-shadow">
+ 
+  {loading && (
+    <div className="flex justify-center items-center gap-2">
+  <Truck className="h-4 w-4 animate-pulse" />
+  Loading vendors...
+</div>
+
+  )}
+
+  
+  {!loading && vendors.length === 0 && (
+    <div className="col-span-full text-center py-12 text-muted-foreground">
+      No vendors found. Click <span className="font-semibold">"Add Vendor"</span> to get started.
+    </div>
+  )}
+
+  
+  {!loading && vendors.length > 0 && filteredVendors.length === 0 && (
+    <div className="col-span-full text-center py-12 text-muted-foreground">
+      No vendors match your search or filter.
+    </div>
+  )}
+
+
+  {!loading && filteredVendors.length > 0 && (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {filteredVendors.map((vendor) => (
+              <Card key={vendor.vendorId} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <CardTitle className="text-lg">{vendor.name}</CardTitle>
+                      <CardTitle className="text-lg">{vendor.vendorName}</CardTitle>
                       <CardDescription className="text-sm">
                         {vendor.vendorType}
                       </CardDescription>
@@ -328,10 +386,17 @@ const SuppliersMain = () => {
                           Edit Vendor
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setVendorToDelete(vendor)
+                            setDeleteDialogOpen(true)
+                          }}  
+                          className="text-red-600"
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>
+
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -340,7 +405,7 @@ const SuppliersMain = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-gray-500" />
-                      <span>{vendor.contactNo}</span>
+                      <span>{vendor.phone}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="h-4 w-4 text-gray-500" />
@@ -351,6 +416,7 @@ const SuppliersMain = () => {
               </Card>
             ))}
           </div>
+           )}
         </TabsContent>
 
         <TabsContent value="table">
@@ -373,11 +439,39 @@ const SuppliersMain = () => {
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {filteredVendors.map((vendor) => (
-                      <TableRow key={vendor.id}>
+                 <TableBody>
+  {/* Loading */}
+  {loading && (
+    <TableRow>
+      <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+        Loading vendors...
+      </TableCell>
+    </TableRow>
+  )}
+
+  {/* No vendors in DB */}
+  {!loading && vendors.length === 0 && (
+    <TableRow>
+      <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+        No vendors found. Click <span className="font-semibold">"Add Vendor"</span> to get started.
+      </TableCell>
+    </TableRow>
+  )}
+
+  {/* No match after search/filter */}
+  {!loading && vendors.length > 0 && filteredVendors.length === 0 && (
+    <TableRow>
+      <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+        No vendors match your search or filter.
+      </TableCell>
+    </TableRow>
+  )}
+
+  {/* Vendors rows */}
+  {!loading && filteredVendors.map((vendor) => (
+    <TableRow key={vendor.vendorId}>
                         <TableCell>
-                          <div className="font-medium">{vendor.name}</div>
+                          <div className="font-medium">{vendor.vendorName}</div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{vendor.vendorType}</Badge>
@@ -385,7 +479,7 @@ const SuppliersMain = () => {
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Phone className="h-3 w-3" />
-                            {vendor.contactNo}
+                            {vendor.phone}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
@@ -409,10 +503,17 @@ const SuppliersMain = () => {
                                 Edit Vendor
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
+                             <DropdownMenuItem 
+                                onClick={() => {
+                                setVendorToDelete(vendor)
+                                setDeleteDialogOpen(true)
+                                }}  
+                                className="text-red-600"
+                              >
+                             <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -425,6 +526,36 @@ const SuppliersMain = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+  <DialogContent className="sm:max-w-[400px]">
+    <DialogHeader>
+      <DialogTitle>Confirm Deletion</DialogTitle>
+      <DialogDescription>
+        Are you sure you want to delete vendor "{vendorToDelete?.vendorName}"? This action cannot be undone.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="flex justify-end gap-2 pt-4">
+      <Button 
+        variant="outline" 
+        onClick={() => setDeleteDialogOpen(false)}
+      >
+        Cancel
+      </Button>
+      <Button 
+        className="bg-red-600 text-white hover:bg-red-400"
+        onClick={() => {
+          handleDeleteVendor(vendorToDelete.vendorId)
+          setDeleteDialogOpen(false)
+          setVendorToDelete(null)
+        }}
+      >
+        Delete
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
     </div>
   )
 }
