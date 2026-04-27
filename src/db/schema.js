@@ -72,7 +72,7 @@ export const usersTable = pgTable("users", {
 export const vendors = pgTable("vendors", {
   vendorId: serial("vendor_id").primaryKey(),
   vendorName: varchar("vendor_name", { length: 150 }).notNull(),
-  vendorType: varchar("vendorType", { length: 50 }).notNull(),
+  vendorType: varchar("vendorType", { length: 50 }),
   contactPerson: varchar("contact_person", { length: 100 }),
   email: varchar("email", { length: 100 }),
   phone: varchar("phone", { length: 15 }),
@@ -81,6 +81,19 @@ export const vendors = pgTable("vendors", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+export const departments = pgTable("departments", {
+  departmentId: serial("department_id").primaryKey(),
+  departmentName: varchar("department_name", { length: 150 }).notNull(),
+  head: varchar("head", { length: 100 }),
+  location: varchar("location", { length: 100 }),
+  status: text("status").notNull().default("Active"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
 
 export const buildings = pgTable("buildings", {
   buildingId: serial("building_id").primaryKey(),
@@ -139,7 +152,8 @@ export const items = pgTable(
     status: itemStatusEnum("status").notNull().default("Active"),
 
    
-    department: varchar("department", { length: 100 }).notNull(),
+    departmentId: integer("department_id")
+      .references(() => departments.departmentId, { onDelete: "set null" }),
 
     supplierId: integer("supplier_id")
       .references(() => vendors.vendorId, { onDelete: "set null" }),
@@ -171,6 +185,10 @@ export const items = pgTable(
   })
 );
 
+export const departmentsRelations = relations(departments, ({ many }) => ({
+  items: many(items),
+}));
+
 export const itemsRelations = relations(items, ({ one }) => ({
   category: one(categories, {
     fields: [items.categoryId],
@@ -185,6 +203,11 @@ export const itemsRelations = relations(items, ({ one }) => ({
   supplier: one(vendors, {
     fields: [items.supplierId],
     references: [vendors.vendorId],
+  }),
+
+  department: one(departments, {
+    fields: [items.departmentId],
+    references: [departments.departmentId],
   }),
 }));
 

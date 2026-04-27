@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Building,
   Search,
@@ -13,6 +13,9 @@ import {
   List,
   User,
   MapPin,
+  Loader2,
+  AlertCircle,
+  PackageX,
 } from "lucide-react";
 import {
   Card,
@@ -48,163 +51,309 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+const emptyForm = () => ({
+  departmentName: "",
+  head: "",
+  location: "",
+  status: "Active",
+  description: "",
+});
+
+const getStatusColor = (status) =>
+  status === "Active"
+    ? "bg-green-100 text-green-800 border-green-200"
+    : "bg-gray-100 text-gray-600 border-gray-200";
+
+// ─── Shared form — MUST be defined outside Department to keep stable identity ──
+const DeptForm = ({ form, setField, formErrors }) => (
+  <div className="space-y-4">
+    <div className="space-y-2">
+      <Label htmlFor="departmentName">
+        Department Name <span className="text-red-500">*</span>
+      </Label>
+      <Input
+        id="departmentName"
+        placeholder="e.g. Computer Science"
+        value={form.departmentName}
+        onChange={(e) => setField("departmentName", e.target.value)}
+      />
+      {formErrors.departmentName && (
+        <p className="text-xs text-red-500">{formErrors.departmentName}</p>
+      )}
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="head">Department Head</Label>
+      <Input
+        id="head"
+        placeholder="e.g. Dr. Rajesh Kumar"
+        value={form.head}
+        onChange={(e) => setField("head", e.target.value)}
+      />
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="location">Location</Label>
+        <Input
+          id="location"
+          placeholder="e.g. Block A"
+          value={form.location}
+          onChange={(e) => setField("location", e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="status">Status</Label>
+        <Select value={form.status} onValueChange={(v) => setField("status", v)}>
+          <SelectTrigger id="status">
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="description">Description</Label>
+      <Textarea
+        id="description"
+        placeholder="Brief description of the department..."
+        value={form.description}
+        onChange={(e) => setField("description", e.target.value)}
+        rows={3}
+      />
+    </div>
+  </div>
+);
+
+// ─── main component ───────────────────────────────────────────────────────────
 const Department = () => {
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
-  const [isDepartmentDialogOpen, setDepartmentDialogOpen] = useState(false);
 
-  const [departmentName, setDepartmentName] = useState("");
-  const [head, setHead] = useState("");
-  const [location, setLocation] = useState("");
-  const [status, setStatus] = useState("Active");
-  const [description, setDescription] = useState("");
+  // form state (shared between add & edit)
+  const [form, setForm] = useState(emptyForm());
+  const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
- 
-  const departments = [
-    {
-      id: 1,
-      name: "Computer Science",
-      head: "Dr. Rajesh Kumar",
-      itemCount: 142,
-      totalValue: 2850000.0,
-      status: "Active",
-      location: "Block A",
-      lastUpdated: "2024-07-11",
-    },
-    {
-      id: 2,
-      name: "Chemistry",
-      head: "Dr. Priya Sharma",
-      itemCount: 89,
-      totalValue: 1650000.0,
-      status: "Active",
-      location: "Block B",
-      lastUpdated: "2024-07-09",
-    },
-    {
-      id: 3,
-      name: "Physics",
-      head: "Dr. Amit Singh",
-      itemCount: 76,
-      totalValue: 1200000.0,
-      status: "Active",
-      location: "Block C",
-      lastUpdated: "2024-07-08",
-    },
-    {
-      id: 4,
-      name: "Biology",
-      head: "Dr. Sunita Verma",
-      itemCount: 67,
-      totalValue: 980000.0,
-      status: "Active",
-      location: "Block D",
-      lastUpdated: "2024-07-07",
-    },
-    {
-      id: 5,
-      name: "Mathematics",
-      head: "Dr. Vikram Joshi",
-      itemCount: 45,
-      totalValue: 320000.0,
-      status: "Active",
-      location: "Block E",
-      lastUpdated: "2024-07-10",
-    },
-    {
-      id: 6,
-      name: "English Literature",
-      head: "Dr. Kavita Patel",
-      itemCount: 23,
-      totalValue: 125000.0,
-      status: "Inactive",
-      location: "Block F",
-      lastUpdated: "2024-07-06",
-    },
-    {
-      id: 7,
-      name: "Mechanical Engineering",
-      head: "Dr. Suresh Gupta",
-      itemCount: 156,
-      totalValue: 3200000.0,
-      status: "Active",
-      location: "Block G",
-      lastUpdated: "2024-07-11",
-    },
-    {
-      id: 8,
-      name: "Civil Engineering",
-      head: "Dr. Neha Agarwal",
-      itemCount: 134,
-      totalValue: 2400000.0,
-      status: "Active",
-      location: "Block H",
-      lastUpdated: "2024-07-09",
-    },
-  ];
+  // dialog visibility
+  const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null); // dept object
+  const [deleteTarget, setDeleteTarget] = useState(null); // dept object
+  const [viewTarget, setViewTarget] = useState(null);   // dept object
 
-  
-  const filteredDepartments = departments.filter((department) => {
-    const matchesSearch =
-      department.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      department.head.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
+  const [toast, setToast] = useState(null); // { type: 'success'|'error', msg }
+
+  // ─── data fetching ────────────────────────────────────────────────────────
+  const fetchDepartments = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/departments");
+      if (!res.ok) throw new Error("Failed to fetch departments");
+      const data = await res.json();
+      setDepartments(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
+
+  // auto-dismiss toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // ─── filtering ────────────────────────────────────────────────────────────
+  const filtered = departments.filter((d) => {
+    const matchSearch =
+      d.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (d.head || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus =
       selectedStatus === "all" ||
-      department.status.toLowerCase() === selectedStatus.toLowerCase();
-
-    return matchesSearch && matchesStatus;
+      d.status.toLowerCase() === selectedStatus.toLowerCase();
+    return matchSearch && matchStatus;
   });
 
-  const handleAddDepartment = () => {
- 
-    console.log("Adding department:", {
-      name: departmentName,
-      head: head,
-      location: location,
-      status: status,
-      description: description,
-      itemCount: 0,
-      totalValue: 0.0,
-      lastUpdated: new Date().toISOString().split('T')[0]
+  // ─── form helpers ─────────────────────────────────────────────────────────
+  const setField = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+
+  const validate = () => {
+    const errs = {};
+    if (!form.departmentName.trim()) errs.departmentName = "Required";
+    return errs;
+  };
+
+  const openEdit = (dept) => {
+    setForm({
+      departmentName: dept.departmentName,
+      head: dept.head || "",
+      location: dept.location || "",
+      status: dept.status,
+      description: dept.description || "",
     });
-    
-  
-    resetForm();
-    setDepartmentDialogOpen(false);
+    setFormErrors({});
+    setEditTarget(dept);
   };
 
-  const resetForm = () => {
-    setDepartmentName("");
-    setHead("");
-    setLocation("");
-    setStatus("Active");
-    setDescription("");
+  const closeEdit = () => {
+    setEditTarget(null);
+    setForm(emptyForm());
+    setFormErrors({});
   };
 
- 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Active":
-        return "bg-green-100 text-green-800";
-      case "Inactive":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const closeAdd = () => {
+    setAddOpen(false);
+    setForm(emptyForm());
+    setFormErrors({});
+  };
+
+  // ─── CRUD handlers ────────────────────────────────────────────────────────
+  const handleAdd = async () => {
+    const errs = validate();
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/departments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create");
+      setToast({ type: "success", msg: `"${data.departmentName}" added successfully.` });
+      closeAdd();
+      fetchDepartments();
+    } catch (err) {
+      setToast({ type: "error", msg: err.message });
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const handleEdit = async () => {
+    const errs = validate();
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/departments/${editTarget.departmentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update");
+      setToast({ type: "success", msg: `"${data.departmentName}" updated successfully.` });
+      closeEdit();
+      fetchDepartments();
+    } catch (err) {
+      setToast({ type: "error", msg: err.message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/departments/${deleteTarget.departmentId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete");
+      setToast({ type: "success", msg: `"${deleteTarget.departmentName}" deleted.` });
+      setDeleteTarget(null);
+      fetchDepartments();
+    } catch (err) {
+      setToast({ type: "error", msg: err.message });
+      setDeleteTarget(null);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ─── loading / error states ───────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Loading departments…</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertCircle className="h-10 w-10 text-destructive" />
+        <p className="text-destructive font-medium">{error}</p>
+        <Button onClick={fetchDepartments}>Retry</Button>
+      </div>
+    );
+  }
+
+  // ─── render ───────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-     
+
+      {/* ── Toast ── */}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all
+            ${toast.type === "success"
+              ? "bg-green-50 border-green-200 text-green-800"
+              : "bg-red-50 border-red-200 text-red-800"
+            }`}
+        >
+          {toast.type === "success"
+            ? <span>✅</span>
+            : <AlertCircle className="h-4 w-4" />}
+          {toast.msg}
+        </div>
+      )}
+
+      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Departments</h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-1">
             Manage college departments and their inventory
           </p>
         </div>
@@ -213,129 +362,33 @@ const Department = () => {
             variant="outline"
             onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
           >
-            {viewMode === "grid" ? (
-              <List className="h-4 w-4" />
-            ) : (
-              <Grid3X3 className="h-4 w-4" />
-            )}
+            {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
           </Button>
 
-          <Dialog open={isDepartmentDialogOpen} onOpenChange={(open) => {
-            setDepartmentDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Department
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Add New Department</DialogTitle>
-                <DialogDescription>
-                  Create a new department for your college
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="departmentName">Department Name *</Label>
-                  <Input
-                    id="departmentName"
-                    placeholder="Enter department name"
-                    value={departmentName}
-                    onChange={(e) => setDepartmentName(e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="head">Department Head *</Label>
-                  <Input
-                    id="head"
-                    placeholder="Enter department head name"
-                    value={head}
-                    onChange={(e) => setHead(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location *</Label>
-                    <Input
-                      id="location"
-                      placeholder="e.g., Block A"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status *</Label>
-                    <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Enter department description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      resetForm();
-                      setDepartmentDialogOpen(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleAddDepartment}
-                    disabled={!departmentName || !head || !location || !status}
-                  >
-                    Add Department
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button className="bg-primary" onClick={() => { setForm(emptyForm()); setFormErrors({}); setAddOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Department
+          </Button>
         </div>
       </div>
 
-      
+      {/* ── Filters ── */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Filter className="h-4 w-4" /> Filters
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search departments..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search by name or head…"
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger className="w-full sm:w-[180px]">
@@ -343,91 +396,110 @@ const Department = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Content */}
-      <Tabs value={viewMode} onValueChange={setViewMode}>
-        <TabsContent value="grid">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredDepartments.map((department) => (
-              <Card
-                key={department.id}
-                className="hover:shadow-md transition-shadow"
-              >
-                <CardHeader className="text-center">
-                  <div className="mx-auto mb-4 p-3 bg-blue-100 rounded-full w-fit">
-                    <Building className="h-8 w-8 text-blue-600" />
-                  </div>
-                  <CardTitle className="text-lg">{department.name}</CardTitle>
-                  <CardDescription className="flex items-center justify-center gap-1">
-                    <User className="h-3 w-3" />
-                    {department.head}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <Badge className={getStatusColor(department.status)}>
-                      {department.status}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {department.itemCount} items
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    {department.location}
-                  </div>
-                  
-                  <div className="text-sm font-medium">
-                    ₹{department.totalValue.toLocaleString("en-IN")}
-                  </div>
+      {/* ── Summary counts ── */}
+      <div className="flex gap-3 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">{filtered.length}</span> department(s)
+        {filtered.length !== departments.length && (
+          <span>of {departments.length} total</span>
+        )}
+      </div>
 
-                  <div className="flex justify-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <MoreHorizontal className="h-4 w-4 mr-2" />
-                          Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Department
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      {/* ── Content ── */}
+      <Tabs value={viewMode} onValueChange={setViewMode}>
+        {/* Grid view */}
+        <TabsContent value="grid">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
+              <PackageX className="h-12 w-12 opacity-30" />
+              <p>No departments found.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {filtered.map((dept) => (
+                <Card key={dept.departmentId} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="text-center pb-2">
+                    <div className="mx-auto mb-3 p-3 bg-blue-100 rounded-full w-fit">
+                      <Building className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <CardTitle className="text-lg leading-tight">{dept.departmentName}</CardTitle>
+                    {dept.head && (
+                      <CardDescription className="flex items-center justify-center gap-1 mt-1">
+                        <User className="h-3 w-3" />
+                        {dept.head}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Badge className={getStatusColor(dept.status)} variant="outline">
+                        {dept.status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {dept.itemCount ?? 0} item(s)
+                      </span>
+                    </div>
+
+                    {dept.location && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3" />
+                        {dept.location}
+                      </div>
+                    )}
+
+                    {dept.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{dept.description}</p>
+                    )}
+
+                    <div className="flex justify-center pt-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <MoreHorizontal className="h-4 w-4 mr-2" />
+                            Actions
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => setViewTarget(dept)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEdit(dept)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => setDeleteTarget(dept)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
+        {/* Table view */}
         <TabsContent value="table">
           <Card>
             <CardHeader>
               <CardTitle>Departments Overview</CardTitle>
-              <CardDescription>
-                {filteredDepartments.length} department(s) found
-              </CardDescription>
+              <CardDescription>{filtered.length} department(s) found</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -438,70 +510,74 @@ const Department = () => {
                       <TableHead>Head</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Items</TableHead>
-                      <TableHead>Value</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Last Updated</TableHead>
+                      <TableHead>Description</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredDepartments.map((department) => (
-                      <TableRow key={department.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 rounded-full">
-                              <Building className="h-4 w-4 text-blue-600" />
-                            </div>
-                            <div className="font-medium">{department.name}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{department.head}</TableCell>
-                        <TableCell>{department.location}</TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            {department.itemCount}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            ₹{department.totalValue.toLocaleString("en-IN")}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(department.status)}>
-                            {department.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {department.lastUpdated}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Department
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                    {filtered.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                          <PackageX className="mx-auto h-8 w-8 mb-2 opacity-30" />
+                          No departments found.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filtered.map((dept) => (
+                        <TableRow key={dept.departmentId}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-blue-100 rounded-full">
+                                <Building className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <span className="font-medium">{dept.departmentName}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{dept.head || <span className="text-muted-foreground italic text-xs">—</span>}</TableCell>
+                          <TableCell>{dept.location || <span className="text-muted-foreground italic text-xs">—</span>}</TableCell>
+                          <TableCell>
+                            <span className="font-medium">{dept.itemCount ?? 0}</span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(dept.status)} variant="outline">
+                              {dept.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                            {dept.description || "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => setViewTarget(dept)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEdit(dept)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  onClick={() => setDeleteTarget(dept)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -509,6 +585,117 @@ const Department = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ─── Add Department Dialog ─────────────────────────────────── */}
+      <Dialog open={addOpen} onOpenChange={(o) => { if (!o) closeAdd(); else setAddOpen(true); }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Department</DialogTitle>
+            <DialogDescription>Create a new department for your college.</DialogDescription>
+          </DialogHeader>
+          <DeptForm form={form} setField={setField} formErrors={formErrors} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={closeAdd} disabled={submitting}>Cancel</Button>
+            <Button onClick={handleAdd} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Add Department
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Edit Department Dialog ────────────────────────────────── */}
+      <Dialog open={!!editTarget} onOpenChange={(o) => { if (!o) closeEdit(); }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Department</DialogTitle>
+            <DialogDescription>Update the department details below.</DialogDescription>
+          </DialogHeader>
+          <DeptForm form={form} setField={setField} formErrors={formErrors} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={closeEdit} disabled={submitting}>Cancel</Button>
+            <Button onClick={handleEdit} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── View Details Dialog ───────────────────────────────────── */}
+      <Dialog open={!!viewTarget} onOpenChange={(o) => { if (!o) setViewTarget(null); }}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-blue-600" />
+              {viewTarget?.departmentName}
+            </DialogTitle>
+            <DialogDescription>Department details</DialogDescription>
+          </DialogHeader>
+          {viewTarget && (
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Status</span>
+                <Badge className={getStatusColor(viewTarget.status)} variant="outline">
+                  {viewTarget.status}
+                </Badge>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Head</span>
+                <span className="font-medium">{viewTarget.head || "—"}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Location</span>
+                <span className="font-medium">{viewTarget.location || "—"}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Items Linked</span>
+                <span className="font-medium">{viewTarget.itemCount ?? 0}</span>
+              </div>
+              {viewTarget.description && (
+                <div className="pt-1">
+                  <p className="text-muted-foreground mb-1">Description</p>
+                  <p>{viewTarget.description}</p>
+                </div>
+              )}
+              <div className="flex justify-between text-xs text-muted-foreground pt-2">
+                <span>Created: {viewTarget.createdAt ? new Date(viewTarget.createdAt).toLocaleDateString("en-IN") : "—"}</span>
+                <span>Updated: {viewTarget.updatedAt ? new Date(viewTarget.updatedAt).toLocaleDateString("en-IN") : "—"}</span>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setViewTarget(null)}>Close</Button>
+            <Button onClick={() => { openEdit(viewTarget); setViewTarget(null); }}>
+              <Edit className="h-4 w-4 mr-2" /> Edit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Delete Confirmation ───────────────────────────────────── */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{deleteTarget?.departmentName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. If any inventory items are still linked to this
+              department, the deletion will be blocked.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleDelete}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

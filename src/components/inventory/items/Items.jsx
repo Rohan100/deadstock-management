@@ -79,34 +79,38 @@ const Items = () => {
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedItems, setSelectedItems] = useState([]);
 
  
- useEffect(() => {
+  useEffect(() => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [itemsRes, categoriesRes, subcategoriesRes, vendorsRes] = await Promise.all([
+      const [itemsRes, categoriesRes, subcategoriesRes, vendorsRes, deptsRes] = await Promise.all([
         fetch("/api/items"),
         fetch("/api/categories"),
         fetch("/api/categories/sub_categories"),
-        fetch("/api/vendors")
+        fetch("/api/vendors"),
+        fetch("/api/departments"),
       ]);
 
-      const [itemsData, categoriesData, subcategoriesData, vendorsData] = await Promise.all([
+      const [itemsData, categoriesData, subcategoriesData, vendorsData, deptsData] = await Promise.all([
         itemsRes.json(),
         categoriesRes.json(),
         subcategoriesRes.json(),
-        vendorsRes.json()
+        vendorsRes.json(),
+        deptsRes.json(),
       ]);
 
       setItems(itemsData.map(i => ({ ...i, totalValue: i.unitPrice * i.quantity })));
       setCategories(categoriesData);
       setSubcategories(subcategoriesData);
       setVendors(vendorsData);
+      setDepartments(deptsData);
 
     } catch (err) {
       console.error(err);
@@ -121,10 +125,11 @@ const Items = () => {
 
  
   const filteredItems = items.filter((item) => {
+    const deptName = departments.find(d => d.departmentId === item.departmentId)?.departmentName || "";
     const matchesSearch =
       item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.department.toLowerCase().includes(searchTerm.toLowerCase());
+      deptName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
       selectedCategory === "all" ||
       item.categoryId === parseInt(selectedCategory);
@@ -145,13 +150,13 @@ const Items = () => {
         itemName,
         sku,
         categoryId: parseInt(category),
-        subcategoryId: subcategory ? parseInt(subcategory) : null,
+        subCategoryId: subcategory ? parseInt(subcategory) : null,
         quantity: parseInt(quantity),
         minStock: parseInt(minStock),
         unitPrice: parseFloat(unitPrice),
-        department,
+        departmentId: department ? parseInt(department) : null,
         location,
-        vendorId: vendor ? parseInt(vendor) : null,
+        supplierId: vendor ? parseInt(vendor) : null,
         condition,
         description,
         status: "Active",
@@ -377,11 +382,21 @@ const Items = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Department</Label>
-                  <Input 
-                    placeholder="Department" 
-                    value={department} 
-                    onChange={(e)=>setDepartment(e.target.value)} 
-                  />
+                  <Select value={department} onValueChange={setDepartment}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((d) => (
+                        <SelectItem key={d.departmentId} value={d.departmentId.toString()}>
+                          {d.departmentName}
+                        </SelectItem>
+                      ))}
+                      {departments.length === 0 && (
+                        <SelectItem value="none" disabled>No departments available</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Vendor</Label>
@@ -591,7 +606,9 @@ const Items = () => {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Building className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm">{item.department}</span>
+                      <span className="text-sm">
+                        {departments.find(d => d.departmentId === item.departmentId)?.departmentName || "—"}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>

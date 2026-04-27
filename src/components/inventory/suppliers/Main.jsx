@@ -59,26 +59,7 @@ const [loading, setLoading] = useState(true)
     useEffect(() => {
   fetchVendors()
 }, [])
-useEffect(() => {
-  const handleInputEvent = (e) => {
-    const { name, value } = e.target;
-    if (name === "vendorName") setVendorName(value);
-    if (name === "contactNo") setContactNo(value);
-    if (name === "address") setAddress(value);
-  };
 
-  const inputs = [
-    document.getElementById("vendorName"),
-    document.getElementById("contactNo"),
-    document.getElementById("address"),
-  ];
-
-  inputs.forEach(input => input?.addEventListener("input", handleInputEvent));
-
-  return () => {
-    inputs.forEach(input => input?.removeEventListener("input", handleInputEvent));
-  };
-}, []);
 
 const fetchVendors = async () => {
   try {

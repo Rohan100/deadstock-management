@@ -1,339 +1,340 @@
-"use client"
-import React, { useState } from 'react'
-import { 
-  ArrowRightLeft, 
-  Search, 
-  Plus, 
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Eye,
-  Filter,
-  Package,
-  Building,
-  Calendar,
-  User,
-  CheckCircle,
-  Clock,
-  AlertTriangle
-} from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table"
+"use client";
+import React, { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+  ArrowRightLeft, Search, Plus, MoreHorizontal, Trash2, Eye,
+  Filter, Package, Building, Calendar, User, Loader2, AlertCircle, PackageX,
+} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+const TRANSFER_TYPES = ["Warehouse to Lab", "Lab to Lab", "Lab to Warehouse"];
+
+const emptyForm = () => ({
+  itemId: "",
+  transferType: "Warehouse to Lab",
+  fromLabId: "",
+  toLabId: "",
+  quantity: "",
+  remarks: "",
+});
+
+const typeBadgeColor = (type) => {
+  if (type === "Warehouse to Lab") return "bg-blue-100 text-blue-800";
+  if (type === "Lab to Lab") return "bg-purple-100 text-purple-800";
+  return "bg-orange-100 text-orange-800";
+};
+
+// ── TransferForm — top-level to prevent focus loss ───────────────────────────
+const TransferForm = ({ form, setField, errors, items, labs }) => {
+  const needsFrom = form.transferType === "Lab to Lab" || form.transferType === "Lab to Warehouse";
+  const needsTo   = form.transferType === "Warehouse to Lab" || form.transferType === "Lab to Lab";
+
+  return (
+    <div className="space-y-4">
+      {/* Transfer Type */}
+      <div className="space-y-2">
+        <Label>Transfer Type <span className="text-red-500">*</span></Label>
+        <Select value={form.transferType} onValueChange={(v) => setField("transferType", v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {TRANSFER_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Item */}
+      <div className="space-y-2">
+        <Label>Item <span className="text-red-500">*</span></Label>
+        <Select value={form.itemId} onValueChange={(v) => setField("itemId", v)}>
+          <SelectTrigger><SelectValue placeholder="Choose an item" /></SelectTrigger>
+          <SelectContent>
+            {items.map((item) => (
+              <SelectItem key={item.itemId} value={String(item.itemId)}>
+                {item.itemName} — {item.sku}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {errors.itemId && <p className="text-xs text-red-500">{errors.itemId}</p>}
+      </div>
+
+      {/* From Lab */}
+      {needsFrom && (
+        <div className="space-y-2">
+          <Label>From Lab <span className="text-red-500">*</span></Label>
+          <Select value={form.fromLabId} onValueChange={(v) => setField("fromLabId", v)}>
+            <SelectTrigger><SelectValue placeholder="Select source lab" /></SelectTrigger>
+            <SelectContent>
+              {labs.map((lab) => (
+                <SelectItem key={lab.labId} value={String(lab.labId)}>
+                  {lab.labName} {lab.labCode ? `(${lab.labCode})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.fromLabId && <p className="text-xs text-red-500">{errors.fromLabId}</p>}
+        </div>
+      )}
+
+      {/* To Lab */}
+      {needsTo && (
+        <div className="space-y-2">
+          <Label>To Lab <span className="text-red-500">*</span></Label>
+          <Select value={form.toLabId} onValueChange={(v) => setField("toLabId", v)}>
+            <SelectTrigger><SelectValue placeholder="Select destination lab" /></SelectTrigger>
+            <SelectContent>
+              {labs.map((lab) => (
+                <SelectItem key={lab.labId} value={String(lab.labId)}>
+                  {lab.labName} {lab.labCode ? `(${lab.labCode})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.toLabId && <p className="text-xs text-red-500">{errors.toLabId}</p>}
+        </div>
+      )}
+
+      {/* Quantity */}
+      <div className="space-y-2">
+        <Label htmlFor="qty">Quantity <span className="text-red-500">*</span></Label>
+        <Input
+          id="qty"
+          type="number"
+          min="1"
+          placeholder="Enter quantity"
+          value={form.quantity}
+          onChange={(e) => setField("quantity", e.target.value)}
+        />
+        {errors.quantity && <p className="text-xs text-red-500">{errors.quantity}</p>}
+      </div>
+
+      {/* Remarks */}
+      <div className="space-y-2">
+        <Label htmlFor="remarks">Remarks</Label>
+        <Textarea
+          id="remarks"
+          placeholder="Reason for transfer..."
+          value={form.remarks}
+          onChange={(e) => setField("remarks", e.target.value)}
+          rows={2}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ── Main Component ────────────────────────────────────────────────────────────
 const TransferMainPage = () => {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [selectedItem, setSelectedItem] = useState("")
-  const [selectedDepartment, setSelectedDepartment] = useState("")
-  const [selectedLab, setSelectedLab] = useState("")
-  const [transferQuantity, setTransferQuantity] = useState("")
-  const [transferNotes, setTransferNotes] = useState("")
-  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false)
+  const { data: session } = useSession();
 
-  // Sample inventory items (matching items table schema)
-  const inventoryItems = [
-    {
-      id: 1,
-      name: "Dell Laptop OptiPlex 7090",
-      modelId: "DELL-OPT-7090-001",
-      availableQuantity: 15,
-      unitPrice: 70000,
-      deadstockId: "DS-001",
-      condition: "New",
-      status: "in stock",
-      vendorId: 1
-    },
-    {
-      id: 2,
-      name: "Chemistry Lab Beakers Set",
-      modelId: "CHEM-BEAKER-SET-001",
-      availableQuantity: 25,
-      unitPrice: 3750,
-      deadstockId: "DS-002",
-      condition: "Good",
-      status: "in stock",
-      vendorId: 2
-    },
-    {
-      id: 3,
-      name: "Office Chairs Ergonomic",
-      modelId: "FURN-CHAIR-ERG-001",
-      availableQuantity: 20,
-      unitPrice: 9900,
-      deadstockId: "DS-003",
-      condition: "New",
-      status: "in stock",
-      vendorId: 3
-    }
-  ]
+  // data
+  const [transfers, setTransfers] = useState([]);
+  const [items, setItems] = useState([]);
+  const [labs, setLabs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Sample departments (matching department table schema)
-  const departments = [
-    { id: 1, name: "Computer Science Department", headUserId: 1 },
-    { id: 2, name: "Chemistry Department", headUserId: 2 },
-    { id: 3, name: "Physics Department", headUserId: 3 },
-    { id: 4, name: "Biology Department", headUserId: 4 },
-    { id: 5, name: "Mathematics Department", headUserId: 5 },
-    { id: 6, name: "Administration Department", headUserId: 6 }
-  ]
+  // filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("all");
 
-  // Sample labs (matching lab table schema)
-  const labs = [
-    { id: 1, labName: "Computer Lab 1", labNo: "L101", deptId: 1 },
-    { id: 2, labName: "Chemistry Lab", labNo: "L201", deptId: 2 },
-    { id: 3, labName: "Physics Lab", labNo: "L301", deptId: 3 },
-    { id: 4, labName: "Biology Lab", labNo: "L401", deptId: 4 }
-  ]
+  // form
+  const [form, setForm] = useState(emptyForm());
+  const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
-  // Sample transfer history (matching distribution table schema + additional fields)
-  const transferHistory = [
-    {
-      id: 1,
-      itemId: 1,
-      transferQuantity: 5,
-      departmentId: 1,
-      labId: 1,
-      transferDate: "2024-07-15",
-      transferredByUserId: 1,
-      itemName: "Dell Laptop OptiPlex 7090",
-      departmentName: "Computer Science Department",
-      labName: "Computer Lab 1",
-      transferredBy: "Admin User"
-    },
-    {
-      id: 2,
-      itemId: 2,
-      transferQuantity: 10,
-      departmentId: 2,
-      labId: 2,
-      transferDate: "2024-07-14",
-      transferredByUserId: 1,
-      itemName: "Chemistry Lab Beakers Set",
-      departmentName: "Chemistry Department",
-      labName: "Chemistry Lab",
-      transferredBy: "Admin User"
-    },
-    {
-      id: 3,
-      itemId: 3,
-      transferQuantity: 8,
-      departmentId: 6,
-      labId: null,
-      transferDate: "2024-07-13",
-      transferredByUserId: 1,
-      itemName: "Office Chairs Ergonomic",
-      departmentName: "Administration Department",
-      labName: null,
-      transferredBy: "Admin User"
-    }
-  ]
+  // dialogs
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewTarget, setViewTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const filteredTransfers = transferHistory.filter(transfer => {
-    const matchesSearch = transfer.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transfer.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (transfer.labName && transfer.labName.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    return matchesSearch
-  })
+  // toast
+  const [toast, setToast] = useState(null);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Completed": return "bg-green-100 text-green-800"
-      case "Pending": return "bg-yellow-100 text-yellow-800"
-      case "Approved": return "bg-blue-100 text-blue-800"
-      case "Rejected": return "bg-red-100 text-red-800"
-      default: return "bg-gray-100 text-gray-800"
-    }
-  }
+  // ── fetch data ──────────────────────────────────────────────────────────
+  const fetchTransfers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/transfer");
+      if (!res.ok) throw new Error("Failed to fetch transfers");
+      setTransfers(await res.json());
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, []);
 
-  const handleTransfer = () => {
-    // Handle transfer logic here - would create new distribution record
-    console.log("Transferring:", {
-      itemId: selectedItem,
-      departmentId: selectedDepartment,
-      labId: selectedLab || null,
-      transferQuantity: transferQuantity,
-      transferDate: new Date().toISOString().split('T')[0],
-      transferredByUserId: 1, // Current user ID
-      notes: transferNotes
-    })
-    setIsTransferDialogOpen(false)
-    // Reset form
-    setSelectedItem("")
-    setSelectedDepartment("")
-    setSelectedLab("")
-    setTransferQuantity("")
-    setTransferNotes("")
-  }
+  useEffect(() => {
+    fetchTransfers();
+    fetch("/api/items").then(r => r.json()).then(setItems).catch(() => {});
+    fetch("/api/labs").then(r => r.json()).then(setLabs).catch(() => {});
+  }, [fetchTransfers]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // ── helpers ─────────────────────────────────────────────────────────────
+  const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const validate = () => {
+    const e = {};
+    if (!form.itemId) e.itemId = "Required";
+    if (!form.quantity || Number(form.quantity) <= 0) e.quantity = "Must be > 0";
+    if ((form.transferType === "Lab to Lab" || form.transferType === "Lab to Warehouse") && !form.fromLabId)
+      e.fromLabId = "Required";
+    if ((form.transferType === "Warehouse to Lab" || form.transferType === "Lab to Lab") && !form.toLabId)
+      e.toLabId = "Required";
+    return e;
+  };
+
+  const handleSubmit = async () => {
+    const e = validate();
+    if (Object.keys(e).length) { setFormErrors(e); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemId: Number(form.itemId),
+          transferType: form.transferType,
+          fromLabId: form.fromLabId ? Number(form.fromLabId) : undefined,
+          toLabId: form.toLabId ? Number(form.toLabId) : undefined,
+          quantity: Number(form.quantity),
+          remarks: form.remarks || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create transfer");
+      setToast({ type: "success", msg: "Transfer created successfully." });
+      setDialogOpen(false);
+      setForm(emptyForm());
+      setFormErrors({});
+      fetchTransfers();
+    } catch (err) {
+      setToast({ type: "error", msg: err.message });
+    } finally { setSubmitting(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/transfer/${deleteTarget.transferId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete");
+      setToast({ type: "success", msg: "Transfer record deleted." });
+      setDeleteTarget(null);
+      fetchTransfers();
+    } catch (err) {
+      setToast({ type: "error", msg: err.message });
+      setDeleteTarget(null);
+    } finally { setSubmitting(false); }
+  };
+
+  // ── filtering ────────────────────────────────────────────────────────────
+  const filtered = transfers.filter((t) => {
+    const search = searchTerm.toLowerCase();
+    const matchSearch =
+      (t.itemName || "").toLowerCase().includes(search) ||
+      (t.fromLabName || "").toLowerCase().includes(search) ||
+      (t.toLabName || "").toLowerCase().includes(search) ||
+      (t.performedByName || "").toLowerCase().includes(search);
+    const matchType = filterType === "all" || t.transferType === filterType;
+    return matchSearch && matchType;
+  });
+
+  // ── render ───────────────────────────────────────────────────────────────
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <span className="ml-3 text-muted-foreground">Loading transfers…</span>
+    </div>
+  );
+
+  if (error) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-4">
+      <AlertCircle className="h-10 w-10 text-destructive" />
+      <p className="text-destructive font-medium">{error}</p>
+      <Button onClick={fetchTransfers}>Retry</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
+
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium
+          ${toast.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+          {toast.type === "success" ? "✅" : <AlertCircle className="h-4 w-4" />}
+          {toast.msg}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Stock Transfers</h1>
-          <p className="text-muted-foreground mt-2">Transfer inventory items to departments and labs</p>
+          <p className="text-muted-foreground mt-1">Transfer inventory between warehouse and labs</p>
         </div>
-        <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary">
-              <Plus className="h-4 w-4 mr-2" />
-              New Transfer
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Create New Transfer</DialogTitle>
-              <DialogDescription>
-                Transfer items from central inventory to departments or labs
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="item">Select Item</Label>
-                <Select value={selectedItem} onValueChange={setSelectedItem}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose an item to transfer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {inventoryItems.map((item) => (
-                      <SelectItem key={item.id} value={item.id.toString()}>
-                        {item.name} (Available: {item.availableQuantity})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="department">Destination Department</Label>
-                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose destination department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lab">Destination Lab (Optional)</Label>
-                <Select value={selectedLab} onValueChange={setSelectedLab}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose destination lab" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {labs.map((lab) => (
-                      <SelectItem key={lab.id} value={lab.id.toString()}>
-                        {lab.labName} ({lab.labNo})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity to Transfer</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  placeholder="Enter quantity"
-                  value={transferQuantity}
-                  onChange={(e) => setTransferQuantity(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Transfer Notes</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Reason for transfer..."
-                  value={transferNotes}
-                  onChange={(e) => setTransferNotes(e.target.value)}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleTransfer}>
-                  Transfer Stock
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button className="bg-primary" onClick={() => { setForm(emptyForm()); setFormErrors({}); setDialogOpen(true); }}>
+          <Plus className="h-4 w-4 mr-2" /> New Transfer
+        </Button>
       </div>
 
-      {/* Transfer History */}
       <Tabs defaultValue="history" className="space-y-4">
         <TabsList>
           <TabsTrigger value="history">Transfer History</TabsTrigger>
-          <TabsTrigger value="inventory">Available Inventory</TabsTrigger>
+          <TabsTrigger value="inventory">Available Items</TabsTrigger>
         </TabsList>
 
+        {/* ── History Tab ──────────────────────────────────────────────── */}
         <TabsContent value="history" className="space-y-4">
           {/* Filters */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filters
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Filter className="h-4 w-4" /> Filters
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input 
-                      placeholder="Search transfers..." 
-                      className="pl-10"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input placeholder="Search by item, lab, or user…" className="pl-10"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-full sm:w-[220px]"><SelectValue placeholder="Transfer type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {TRANSFER_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
 
-          {/* Transfer History Table */}
+          {/* Table */}
           <Card>
             <CardHeader>
               <CardTitle>Transfer History</CardTitle>
-              <CardDescription>
-                {filteredTransfers.length} transfer(s) found
-              </CardDescription>
+              <CardDescription>{filtered.length} transfer(s) found</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -341,43 +342,51 @@ const TransferMainPage = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>To</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>From → To</TableHead>
+                      <TableHead>Qty</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Transferred By</TableHead>
+                      <TableHead>By</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTransfers.map((transfer) => (
-                      <TableRow key={transfer.id}>
+                    {filtered.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                          <PackageX className="mx-auto h-8 w-8 mb-2 opacity-30" />
+                          No transfers found.
+                        </TableCell>
+                      </TableRow>
+                    ) : filtered.map((t) => (
+                      <TableRow key={t.transferId}>
                         <TableCell>
-                          <div className="font-medium">{transfer.itemName}</div>
+                          <div className="font-medium">{t.itemName || "—"}</div>
+                          <div className="text-xs text-muted-foreground">{t.sku}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{transfer.transferQuantity}</div>
+                          <Badge className={typeBadgeColor(t.transferType)} variant="outline">
+                            {t.transferType}
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4 text-gray-500" />
-                            <div className="text-sm">
-                              <div>{transfer.departmentName}</div>
-                              {transfer.labName && (
-                                <div className="text-muted-foreground">{transfer.labName}</div>
-                              )}
-                            </div>
+                          <div className="flex items-center gap-1 text-sm">
+                            <span className="text-muted-foreground">{t.fromLabName || "Warehouse"}</span>
+                            <ArrowRightLeft className="h-3 w-3 mx-1 text-muted-foreground" />
+                            <span>{t.toLabName || "Warehouse"}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{t.quantity}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {t.transferDate ? new Date(t.transferDate).toLocaleDateString("en-IN") : "—"}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            {transfer.transferDate}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 text-sm">
-                            <User className="h-4 w-4 text-gray-500" />
-                            {transfer.transferredBy}
+                          <div className="flex items-center gap-1 text-sm">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            {t.performedByName || "—"}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -389,18 +398,12 @@ const TransferMainPage = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Transfer
+                              <DropdownMenuItem onClick={() => setViewTarget(t)}>
+                                <Eye className="mr-2 h-4 w-4" /> View Details
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                              <DropdownMenuItem className="text-red-600" onClick={() => setDeleteTarget(t)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Record
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -414,43 +417,43 @@ const TransferMainPage = () => {
           </Card>
         </TabsContent>
 
+        {/* ── Available Items Tab ──────────────────────────────────────── */}
         <TabsContent value="inventory" className="space-y-4">
-          {/* Available Inventory */}
           <Card>
             <CardHeader>
-              <CardTitle>Available Inventory</CardTitle>
-              <CardDescription>
-                Items available for transfer to departments and labs
-              </CardDescription>
+              <CardTitle>Available Items</CardTitle>
+              <CardDescription>Items that can be transferred</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {inventoryItems.map((item) => (
-                  <Card key={item.id} className="hover:shadow-md transition-shadow">
+                {items.map((item) => (
+                  <Card key={item.itemId} className="hover:shadow-md transition-shadow">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">{item.name}</CardTitle>
-                      <CardDescription>{item.modelId}</CardDescription>
+                      <CardTitle className="text-base">{item.itemName}</CardTitle>
+                      <CardDescription>{item.sku}</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-gray-500" />
-                          Available
+                    <CardContent className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Package className="h-3 w-3" /> Quantity
                         </span>
-                        <span className="font-medium">{item.availableQuantity}</span>
+                        <span className="font-medium">{item.quantity}</span>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span>Deadstock ID</span>
-                        <span className="text-muted-foreground">{item.deadstockId}</span>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Unit Price</span>
+                        <span className="font-medium">₹{Number(item.unitPrice).toLocaleString("en-IN")}</span>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span>Value</span>
-                        <span className="font-medium">₹{item.unitPrice.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span>Condition</span>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Condition</span>
                         <Badge variant="outline" className="text-xs">{item.condition}</Badge>
                       </div>
+                      <Button size="sm" className="w-full mt-2" onClick={() => {
+                        setForm({ ...emptyForm(), itemId: String(item.itemId) });
+                        setFormErrors({});
+                        setDialogOpen(true);
+                      }}>
+                        Transfer
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -459,8 +462,80 @@ const TransferMainPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
-  )
-}
 
-export default TransferMainPage
+      {/* ── New Transfer Dialog ──────────────────────────────────────── */}
+      <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) { setDialogOpen(false); setForm(emptyForm()); setFormErrors({}); } }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Transfer</DialogTitle>
+            <DialogDescription>Transfer stock between warehouse and labs.</DialogDescription>
+          </DialogHeader>
+          <TransferForm form={form} setField={setField} errors={formErrors} items={items} labs={labs} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Transfer Stock
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── View Details Dialog ──────────────────────────────────────── */}
+      <Dialog open={!!viewTarget} onOpenChange={(o) => { if (!o) setViewTarget(null); }}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" /> Transfer #{viewTarget?.transferId}
+            </DialogTitle>
+            <DialogDescription>Transfer record details</DialogDescription>
+          </DialogHeader>
+          {viewTarget && (
+            <div className="space-y-3 text-sm">
+              {[
+                ["Item", viewTarget.itemName],
+                ["SKU", viewTarget.sku],
+                ["Type", viewTarget.transferType],
+                ["From", viewTarget.fromLabName || "Warehouse"],
+                ["To", viewTarget.toLabName || "Warehouse"],
+                ["Quantity", viewTarget.quantity],
+                ["Date", viewTarget.transferDate ? new Date(viewTarget.transferDate).toLocaleDateString("en-IN") : "—"],
+                ["Performed By", viewTarget.performedByName],
+                ["Remarks", viewTarget.remarks || "—"],
+              ].map(([label, val]) => (
+                <div key={label} className="flex justify-between border-b pb-2 last:border-0">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium text-right max-w-[240px]">{val}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => setViewTarget(null)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation ──────────────────────────────────────── */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transfer Record?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This only removes the log record. The stock changes that already happened will NOT be reversed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete} disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default TransferMainPage;
