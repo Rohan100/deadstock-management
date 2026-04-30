@@ -104,6 +104,10 @@ const data = {
           title: "Suppliers",
           url: "/inventory/suppliers",
         },
+        {
+          title: "Buildings",
+          url: "/inventory/buildings",
+        },
       ],
     },
     // {

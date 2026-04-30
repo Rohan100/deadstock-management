@@ -63,7 +63,7 @@ export async function POST(request) {
       quantity: data.quantity ?? 0,
       minStock: data.minStock ?? 0,
       unitPrice: data.unitPrice,
-      department: data.department,
+     departmentId: data.departmentId,
       supplierId: data.supplierId ?? null,
       location: data.location,
       condition: data.condition ?? "New",

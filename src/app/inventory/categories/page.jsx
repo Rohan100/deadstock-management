@@ -141,30 +141,53 @@ const [categoryToDelete, setCategoryToDelete] = useState(null)
   }
 
   const fetchCategories = async () => {
-    try {
-      setLoading(true)
-      const res = await fetch("/api/categories")
-      const data = await res.json()
+  try {
+    setLoading(true)
 
-      // Map DB fields → UI fields
-      const formatted = data.map((cat) => ({
+    // fetch both categories + items
+    const [catRes, itemRes] = await Promise.all([
+      fetch("/api/categories"),
+      fetch("/api/items"),
+    ])
+
+    const categoriesData = await catRes.json()
+    const itemsData = await itemRes.json()
+
+    // 🔥 compute real counts per category
+    const formatted = categoriesData.map((cat) => {
+      const relatedItems = itemsData.filter(
+        (item) => item.categoryId === cat.categoryId
+      )
+
+      return {
         id: cat.categoryId,
         name: cat.categoryName,
         description: cat.description,
         status: cat.status || "Active",
-        itemCount: 0,
-        totalValue: 0,
-        lastUpdated: cat.updatedAt?.split("T")[0] || cat.createdAt?.split("T")[0],
-      }))
 
-      setCategories(formatted)
-    } catch (err) {
-      console.error("Failed to fetch categories", err)
-      toast.error("Failed to load categories")
-    } finally {
-      setLoading(false)
-    }
+        // ✅ REAL COUNT (fixes your problem)
+        itemCount: relatedItems.length,
+
+        // ✅ REAL VALUE
+        totalValue: relatedItems.reduce(
+          (sum, item) => sum + (item.unitPrice * item.quantity),
+          0
+        ),
+
+        lastUpdated:
+          cat.updatedAt?.split("T")[0] ||
+          cat.createdAt?.split("T")[0],
+      }
+    })
+
+    setCategories(formatted)
+  } catch (err) {
+    console.error("Failed to fetch categories", err)
+    toast.error("Failed to load categories")
+  } finally {
+    setLoading(false)
   }
+}
 
   const confirmDeleteCategory = async () => {
   if (!categoryToDelete?.id) return

@@ -98,6 +98,7 @@ const Items = () => {
         fetch("/api/departments"),
       ]);
 
+
       const [itemsData, categoriesData, subcategoriesData, vendorsData, deptsData] = await Promise.all([
         itemsRes.json(),
         categoriesRes.json(),
@@ -107,10 +108,14 @@ const Items = () => {
       ]);
 
       setItems(itemsData.map(i => ({ ...i, totalValue: i.unitPrice * i.quantity })));
-      setCategories(categoriesData);
-      setSubcategories(subcategoriesData);
-      setVendors(vendorsData);
-      setDepartments(deptsData);
+      setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData.data || []);
+setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : subcategoriesData.data || []);
+setVendors(Array.isArray(vendorsData) ? vendorsData : vendorsData.data || []);
+setDepartments(Array.isArray(deptsData) ? deptsData : deptsData.data || []);
+     
+      console.log("CATEGORIES:", categoriesData);
+console.log("SUBCATEGORIES:", subcategoriesData);
+console.log("VENDORS:", vendorsData);
 
     } catch (err) {
       console.error(err);
@@ -154,7 +159,7 @@ const Items = () => {
         quantity: parseInt(quantity),
         minStock: parseInt(minStock),
         unitPrice: parseFloat(unitPrice),
-        departmentId: department ? parseInt(department) : null,
+       departmentId: department ? parseInt(department) : null,
         location,
         supplierId: vendor ? parseInt(vendor) : null,
         condition,
