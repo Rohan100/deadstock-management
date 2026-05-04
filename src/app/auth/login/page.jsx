@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { signIn } from "next-auth/react";
-import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -70,9 +69,6 @@ export default function LoginPage() {
             {error && (
               <div className="text-red-500 text-sm text-center">{error}</div>
             )}
-            <Link href={'/auth/forget-password'} className="mt-3 w-full flex justify-end  text-sm text-blue-700">
-                Forget Password?
-            </Link>
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full mt-4" disabled={loading}>
