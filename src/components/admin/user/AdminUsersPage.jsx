@@ -8,8 +8,10 @@ import { getUsers } from "./api";
 import { UserPlus } from 'lucide-react';
 import AddUser from "@/components/admin/user/AddUser";
 import axios from "axios";
+import { useSession } from "next-auth/react";
 
 function AdminUsersPage() {
+    const { data: session } = useSession();
     const [users, setUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [filteredUsers, setFilteredUsers] = useState([]);
@@ -43,6 +45,8 @@ function AdminUsersPage() {
 
 
     const handleEnableDisable = async (id, isEnabled) => {
+        if (!session?.user?.isAdmin || Number(session.user.id) === id) return;
+
         try {
             await axios.patch(`/api/user/${id}/status`, { isEnabled: !isEnabled });
             setUsers((prev) =>
@@ -56,6 +60,8 @@ function AdminUsersPage() {
     };
 
     const handleDelete = async (id) => {
+        if (!session?.user?.isAdmin || Number(session.user.id) === id) return;
+
         if (window.confirm("Are you sure you want to delete this user?")) {
             try {
                 await axios.delete(`/api/user/${id}`);
@@ -85,7 +91,7 @@ function AdminUsersPage() {
                         <span>Active: {users.filter(u => u.isEnabled).length}</span>
                     </div>
                 </div>
-                <AddUser setUsers={setUsers}/>
+                {session?.user?.isAdmin && <AddUser setUsers={setUsers}/>}
             </div>
 
             {/* Search and Filters */}
@@ -186,6 +192,7 @@ function AdminUsersPage() {
                                                 size="sm"
                                                 variant={user.isEnabled ? "default" : "outline"}
                                                 onClick={() => handleEnableDisable(user.id, user.isEnabled)}
+                                                disabled={Number(session?.user?.id) === user.id}
                                                 className={user.isEnabled ? "bg-green-600 hover:bg-green-700" : "border-red-300 text-red-600 hover:bg-red-50"}
                                             >
                                                 {user.isEnabled ? (
@@ -207,6 +214,7 @@ function AdminUsersPage() {
                                                 size="sm"
                                                 variant="destructive"
                                                 onClick={() => handleDelete(user.id)}
+                                                disabled={Number(session?.user?.id) === user.id}
                                                 className="bg-red-600 hover:bg-red-700"
                                             >
                                                 <Trash2 className="h-3 w-3 mr-1" />

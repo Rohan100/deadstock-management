@@ -20,6 +20,7 @@ import { useMemo } from "react";
 
 export default function SidebarPage({ children }) {
   const pathname = usePathname();
+  const isAuthenticationPage = pathname.startsWith("/auth") || pathname === "/signup";
 
   const breadcrumbItems = useMemo(() => {
     const pathSegments = pathname.split('/').filter(Boolean);
@@ -76,6 +77,10 @@ export default function SidebarPage({ children }) {
 
     return breadcrumbs;
   }, [pathname]);
+
+  if (isAuthenticationPage) {
+    return children;
+  }
 
   return (
     <SidebarProvider>

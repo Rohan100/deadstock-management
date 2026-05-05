@@ -18,6 +18,7 @@ import { NavMain } from "@/components/sidebar/nav-main"
 import { NavProjects } from "@/components/sidebar/nav-projects"
 import { NavUser } from "@/components/sidebar/nav-user"
 import { TeamSwitcher } from "@/components/sidebar/team-switcher"
+import { useSession } from "next-auth/react"
 import {
   Sidebar,
   SidebarContent,
@@ -179,6 +180,16 @@ const data = {
 export function AppSidebar({
   ...props
 }) {
+  const { data: session } = useSession()
+  const isAdmin = Boolean(session?.user?.isAdmin)
+  const user = {
+    name: session?.user?.name || "Signed in user",
+    email: session?.user?.email || "",
+    avatar: data.user.avatar,
+    role: session?.user?.role || "User",
+  }
+  const navMain = data.navMain.filter((item) => item.title !== "Administration" || isAdmin)
+
   return (
     (<Sidebar collapsible="icon" variant="inset" {...props}>
       <SidebarHeader>
@@ -186,11 +197,11 @@ export function AppSidebar({
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navMain} />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>)

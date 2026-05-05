@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -43,14 +44,16 @@ function SignupPage({setUsers}) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { register, handleSubmit, formState: { errors },reset } = useForm();
+  const { control, register, handleSubmit, formState: { errors },reset } = useForm({
+    defaultValues: { isAdmin: false },
+  });
 
   const onSubmit = async (data) => {
     setLoading(true);
     setError("");
     try {
       // Replace with your signup API endpoint
-      const res = await axios.post("/api/user",{...data, isAdmin: false });
+      const res = await axios.post("/api/user",{...data, isAdmin: Boolean(data.isAdmin) });
       setUsers(prev => [...prev,res.data]);
       reset()
     } catch (err) {
@@ -120,6 +123,20 @@ function SignupPage({setUsers}) {
               </button>
             </div>
             {errors.password && <p className="text-red-500 text-xs">{errors.password.message}</p>}
+          </div>
+          <div className="flex items-center gap-2">
+            <Controller
+              name="isAdmin"
+              control={control}
+              render={({ field }) => (
+                <Checkbox
+                  id="isAdmin"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              )}
+            />
+            <Label htmlFor="isAdmin">Admin</Label>
           </div>
           {error && (
             <div className="text-red-500 text-sm text-center">{error}</div>

@@ -1,23 +1,26 @@
 import db from '@/db';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-// export const usersTable = pgTable("users", {
-//   id: serial('id').primaryKey(), 
-//   name: varchar({ length: 255 }).notNull(),
-//   username: varchar({ length: 255 }).notNull().unique(),
-//   password: varchar({ length: 255 }).notNull(),
-//   createdAt: timestamp().notNull().defaultNow(),
-//   email: varchar({ length: 255 }).notNull().unique(),
-//   isAdmin: boolean().notNull().default(false),
-// });
-
 import { usersTable } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/authorization';
+
+const userColumns = {
+  id: usersTable.id,
+  name: usersTable.name,
+  username: usersTable.username,
+  email: usersTable.email,
+  createdAt: usersTable.createdAt,
+  isAdmin: usersTable.isAdmin,
+  isEnabled: usersTable.isEnabled,
+};
 
 export async function GET(request) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
 
-    const users = await db.select().from(usersTable)
+    const users = await db.select(userColumns).from(usersTable)
     if (!users) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -30,6 +33,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const { name, username, password, email,isAdmin } = await request.json();
 
@@ -44,12 +50,12 @@ export async function POST(request) {
       username,
       password: hashedPassword,
       email,
-      isAdmin,
+      isAdmin: Boolean(isAdmin),
     };
 
-    const insertedUser = await db.insert(usersTable).values(newUser).returning();
+    const [insertedUser] = await db.insert(usersTable).values(newUser).returning(userColumns);
 
-    return NextResponse.json(insertedUser[0], { status: 201 });
+    return NextResponse.json(insertedUser, { status: 201 });
   } catch (error) {
     console.error('Error creating user:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

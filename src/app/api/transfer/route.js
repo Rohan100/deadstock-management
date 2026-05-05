@@ -2,8 +2,7 @@ import db from '@/db';
 import { NextResponse } from 'next/server';
 import { stockTransfers, items, labs, warehouseStock, labStock, usersTable } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAuth } from '@/lib/authorization';
 
 // ─── GET /api/transfer ───────────────────────────────────────────────────────
 // Returns all transfers with joined item name, lab names, and performer name.
@@ -62,11 +61,10 @@ export async function GET(request) {
 // transferType must be one of:
 //   "Warehouse to Lab" | "Lab to Lab" | "Lab to Warehouse"
 export async function POST(request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const performedBy = Number(session.user.id);
+  const { user, error } = await requireAuth();
+  if (error) return error;
+
+  const performedBy = Number(user.id);
 
   try {
     const { itemId, transferType, fromLabId, toLabId, quantity, remarks } = await request.json();
