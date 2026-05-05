@@ -104,8 +104,9 @@ export const buildings = pgTable("buildings", {
 export const labs = pgTable("labs", {
   labId: serial("lab_id").primaryKey(),
   buildingId: integer("building_id")
-    .notNull()
     .references(() => buildings.buildingId, { onDelete: "cascade" }),
+  departmentId: integer("department_id")
+    .references(() => departments.departmentId, { onDelete: "restrict" }),
   labName: varchar("lab_name", { length: 100 }).notNull(),
   labCode: varchar("lab_code", { length: 50 }).unique(),
   floorNumber: integer("floor_number"),
@@ -123,6 +124,10 @@ export const labsRelations = relations(labs, ({ one }) => ({
   building: one(buildings, {
     fields: [labs.buildingId],
     references: [buildings.buildingId],
+  }),
+  department: one(departments, {
+    fields: [labs.departmentId],
+    references: [departments.departmentId],
   }),
 }));
 

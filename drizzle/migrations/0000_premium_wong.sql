@@ -1,13 +1,27 @@
-CREATE TYPE "public"."condition_status_enum" AS ENUM('New', 'Good', 'Fair', 'Poor', 'Damaged');--> statement-breakpoint
-CREATE TYPE "public"."disposal_method_enum" AS ENUM('Sale', 'Donation', 'Scrap', 'E-Waste', 'Other');--> statement-breakpoint
-CREATE TYPE "public"."transfer_type_enum" AS ENUM('Warehouse to Lab', 'Lab to Lab', 'Lab to Warehouse');--> statement-breakpoint
-CREATE TABLE "buildings" (
+DO $$ BEGIN
+ EXECUTE 'CREATE TYPE "public"."condition_status_enum" AS ENUM(''New'', ''Good'', ''Fair'', ''Poor'', ''Damaged'')';
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ EXECUTE 'CREATE TYPE "public"."disposal_method_enum" AS ENUM(''Sale'', ''Donation'', ''Scrap'', ''E-Waste'', ''Other'')';
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ EXECUTE 'CREATE TYPE "public"."transfer_type_enum" AS ENUM(''Warehouse to Lab'', ''Lab to Lab'', ''Lab to Warehouse'')';
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "buildings" (
 	"building_id" serial PRIMARY KEY NOT NULL,
 	"building_name" varchar(100) NOT NULL,
 	"address" text
 );
 --> statement-breakpoint
-CREATE TABLE "categories" (
+CREATE TABLE IF NOT EXISTS "categories" (
 	"category_id" serial PRIMARY KEY NOT NULL,
 	"category_name" varchar(100) NOT NULL,
 	"description" text,
@@ -15,7 +29,7 @@ CREATE TABLE "categories" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "disposal_records" (
+CREATE TABLE IF NOT EXISTS "disposal_records" (
 	"disposal_id" serial PRIMARY KEY NOT NULL,
 	"lab_id" integer,
 	"item_id" integer,
@@ -26,7 +40,7 @@ CREATE TABLE "disposal_records" (
 	"remarks" text
 );
 --> statement-breakpoint
-CREATE TABLE "items" (
+CREATE TABLE IF NOT EXISTS "items" (
 	"item_id" serial PRIMARY KEY NOT NULL,
 	"item_name" varchar(200) NOT NULL,
 	"category_id" integer NOT NULL,
@@ -41,7 +55,7 @@ CREATE TABLE "items" (
 	CONSTRAINT "unique_item" UNIQUE("item_name","brand","model_number")
 );
 --> statement-breakpoint
-CREATE TABLE "lab_stock" (
+CREATE TABLE IF NOT EXISTS "lab_stock" (
 	"lab_stock_id" serial PRIMARY KEY NOT NULL,
 	"item_id" integer NOT NULL,
 	"lab_id" integer NOT NULL,
@@ -52,7 +66,7 @@ CREATE TABLE "lab_stock" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "labs" (
+CREATE TABLE IF NOT EXISTS "labs" (
 	"lab_id" serial PRIMARY KEY NOT NULL,
 	"building_id" integer NOT NULL,
 	"lab_name" varchar(100) NOT NULL,
@@ -65,7 +79,7 @@ CREATE TABLE "labs" (
 	CONSTRAINT "labs_lab_code_unique" UNIQUE("lab_code")
 );
 --> statement-breakpoint
-CREATE TABLE "purchase_history" (
+CREATE TABLE IF NOT EXISTS "purchase_history" (
 	"purchase_id" serial PRIMARY KEY NOT NULL,
 	"item_id" integer NOT NULL,
 	"vendor_id" integer,
@@ -79,7 +93,7 @@ CREATE TABLE "purchase_history" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "stock_transfers" (
+CREATE TABLE IF NOT EXISTS "stock_transfers" (
 	"transfer_id" serial PRIMARY KEY NOT NULL,
 	"item_id" integer NOT NULL,
 	"transfer_type" "transfer_type_enum" NOT NULL,
@@ -91,14 +105,14 @@ CREATE TABLE "stock_transfers" (
 	"remarks" text
 );
 --> statement-breakpoint
-CREATE TABLE "sub_categories" (
+CREATE TABLE IF NOT EXISTS "sub_categories" (
 	"sub_category_id" serial PRIMARY KEY NOT NULL,
 	"category_id" integer NOT NULL,
 	"sub_category_name" varchar(100) NOT NULL,
 	"description" text
 );
 --> statement-breakpoint
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"username" varchar(255) NOT NULL,
@@ -111,7 +125,7 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE TABLE "vendors" (
+CREATE TABLE IF NOT EXISTS "vendors" (
 	"vendor_id" serial PRIMARY KEY NOT NULL,
 	"vendor_name" varchar(150) NOT NULL,
 	"contact_person" varchar(100),
@@ -122,7 +136,7 @@ CREATE TABLE "vendors" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "warehouse_stock" (
+CREATE TABLE IF NOT EXISTS "warehouse_stock" (
 	"warehouse_stock_id" serial PRIMARY KEY NOT NULL,
 	"item_id" integer NOT NULL,
 	"quantity_available" integer DEFAULT 0 NOT NULL,

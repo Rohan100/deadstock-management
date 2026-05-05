@@ -1,7 +1,8 @@
 import db from '@/db';
 import { NextResponse } from 'next/server';
-import { departments, items } from '@/db/schema';
+import { departments, items, labs } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/authorization';
 
 // GET /api/departments/[id]
 export async function GET(request, { params }) {
@@ -21,6 +22,10 @@ export async function GET(request, { params }) {
           SELECT COUNT(*) FROM items
           WHERE items.department_id = departments.department_id
         )`.mapWith(Number),
+        labCount: sql`(
+          SELECT COUNT(*) FROM labs
+          WHERE labs.department_id = departments.department_id
+        )`.mapWith(Number),
       })
       .from(departments)
       .where(eq(departments.departmentId, parseInt(id)))
@@ -38,6 +43,9 @@ export async function GET(request, { params }) {
 
 // PUT /api/departments/[id]
 export async function PUT(request, { params }) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   const { id } = await params;
   try {
     const { departmentName, head, location, status, description } = await request.json();
@@ -71,6 +79,9 @@ export async function PUT(request, { params }) {
 
 // DELETE /api/departments/[id]
 export async function DELETE(request, { params }) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   const { id } = await params;
 
   if (!id || isNaN(Number(id))) {
@@ -88,6 +99,19 @@ export async function DELETE(request, { params }) {
     if (linkedItems.length > 0) {
       return NextResponse.json(
         { error: 'Cannot delete: items are still linked to this department.' },
+        { status: 409 }
+      );
+    }
+
+    const linkedLabs = await db
+      .select()
+      .from(labs)
+      .where(eq(labs.departmentId, Number(id)))
+      .limit(1);
+
+    if (linkedLabs.length > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete: labs are still linked to this department.' },
         { status: 409 }
       );
     }

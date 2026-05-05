@@ -16,6 +16,7 @@ import {
   Loader2,
   AlertCircle,
   PackageX,
+  FlaskConical,
 } from "lucide-react";
 import {
   Card,
@@ -78,6 +79,17 @@ const emptyForm = () => ({
   location: "",
   status: "Active",
   description: "",
+});
+
+const emptyLabForm = () => ({
+  labName: "",
+  labCode: "",
+  buildingId: "none",
+  floorNumber: "",
+  labType: "",
+  capacity: "",
+  inChargeName: "",
+  inChargeContact: "",
 });
 
 const getStatusColor = (status) =>
@@ -150,9 +162,117 @@ const DeptForm = ({ form, setField, formErrors }) => (
   </div>
 );
 
+const LabForm = ({ form, setField, formErrors, buildings }) => (
+  <div className="space-y-4">
+    <div className="space-y-2">
+      <Label htmlFor="labName">
+        Lab Name <span className="text-red-500">*</span>
+      </Label>
+      <Input
+        id="labName"
+        placeholder="e.g. Computer Lab 1"
+        value={form.labName}
+        onChange={(e) => setField("labName", e.target.value)}
+      />
+      {formErrors.labName && (
+        <p className="text-xs text-red-500">{formErrors.labName}</p>
+      )}
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="labCode">Lab Code</Label>
+        <Input
+          id="labCode"
+          placeholder="e.g. CSE-L1"
+          value={form.labCode}
+          onChange={(e) => setField("labCode", e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="labType">Lab Type</Label>
+        <Input
+          id="labType"
+          placeholder="e.g. Computer"
+          value={form.labType}
+          onChange={(e) => setField("labType", e.target.value)}
+        />
+      </div>
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="buildingId">Building</Label>
+      <Select
+        value={form.buildingId}
+        onValueChange={(value) => setField("buildingId", value)}
+      >
+        <SelectTrigger id="buildingId">
+          <SelectValue placeholder="Select building" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">No building assigned</SelectItem>
+          {buildings.map((building) => (
+            <SelectItem key={building.buildingId} value={String(building.buildingId)}>
+              {building.buildingName}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="floorNumber">Floor</Label>
+        <Input
+          id="floorNumber"
+          type="number"
+          min="0"
+          placeholder="e.g. 2"
+          value={form.floorNumber}
+          onChange={(e) => setField("floorNumber", e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="capacity">Capacity</Label>
+        <Input
+          id="capacity"
+          type="number"
+          min="0"
+          placeholder="e.g. 30"
+          value={form.capacity}
+          onChange={(e) => setField("capacity", e.target.value)}
+        />
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="inChargeName">In-Charge</Label>
+        <Input
+          id="inChargeName"
+          placeholder="e.g. Prof. Sharma"
+          value={form.inChargeName}
+          onChange={(e) => setField("inChargeName", e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="inChargeContact">Contact</Label>
+        <Input
+          id="inChargeContact"
+          placeholder="e.g. 9876543210"
+          value={form.inChargeContact}
+          onChange={(e) => setField("inChargeContact", e.target.value)}
+        />
+      </div>
+    </div>
+  </div>
+);
+
 // ─── main component ───────────────────────────────────────────────────────────
 const Department = () => {
   const [departments, setDepartments] = useState([]);
+  const [labs, setLabs] = useState([]);
+  const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -163,6 +283,8 @@ const Department = () => {
   // form state (shared between add & edit)
   const [form, setForm] = useState(emptyForm());
   const [formErrors, setFormErrors] = useState({});
+  const [labForm, setLabForm] = useState(emptyLabForm());
+  const [labFormErrors, setLabFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   // dialog visibility
@@ -170,6 +292,7 @@ const Department = () => {
   const [editTarget, setEditTarget] = useState(null); // dept object
   const [deleteTarget, setDeleteTarget] = useState(null); // dept object
   const [viewTarget, setViewTarget] = useState(null);   // dept object
+  const [labTarget, setLabTarget] = useState(null); // dept object
 
   const [toast, setToast] = useState(null); // { type: 'success'|'error', msg }
 
@@ -178,10 +301,22 @@ const Department = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/departments");
-      if (!res.ok) throw new Error("Failed to fetch departments");
-      const data = await res.json();
-      setDepartments(data);
+      const [departmentsRes, labsRes, buildingsRes] = await Promise.all([
+        fetch("/api/departments"),
+        fetch("/api/labs"),
+        fetch("/api/building"),
+      ]);
+      if (!departmentsRes.ok) throw new Error("Failed to fetch departments");
+      if (!labsRes.ok) throw new Error("Failed to fetch labs");
+      if (!buildingsRes.ok) throw new Error("Failed to fetch buildings");
+      const [departmentsData, labsData, buildingsData] = await Promise.all([
+        departmentsRes.json(),
+        labsRes.json(),
+        buildingsRes.json(),
+      ]);
+      setDepartments(departmentsData);
+      setLabs(labsData);
+      setBuildings(buildingsData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -211,12 +346,22 @@ const Department = () => {
 
   // ─── form helpers ─────────────────────────────────────────────────────────
   const setField = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+  const setLabField = (key, val) => setLabForm((f) => ({ ...f, [key]: val }));
 
   const validate = () => {
     const errs = {};
     if (!form.departmentName.trim()) errs.departmentName = "Required";
     return errs;
   };
+
+  const validateLab = () => {
+    const errs = {};
+    if (!labForm.labName.trim()) errs.labName = "Required";
+    return errs;
+  };
+
+  const labsForDepartment = (departmentId) =>
+    labs.filter((lab) => lab.departmentId === departmentId);
 
   const openEdit = (dept) => {
     setForm({
@@ -240,6 +385,18 @@ const Department = () => {
     setAddOpen(false);
     setForm(emptyForm());
     setFormErrors({});
+  };
+
+  const openLabDialog = (dept) => {
+    setLabTarget(dept);
+    setLabForm(emptyLabForm());
+    setLabFormErrors({});
+  };
+
+  const closeLabDialog = () => {
+    setLabTarget(null);
+    setLabForm(emptyLabForm());
+    setLabFormErrors({});
   };
 
   // ─── CRUD handlers ────────────────────────────────────────────────────────
@@ -304,6 +461,36 @@ const Department = () => {
     } catch (err) {
       setToast({ type: "error", msg: err.message });
       setDeleteTarget(null);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddLab = async () => {
+    if (!labTarget) return;
+    const errs = validateLab();
+    if (Object.keys(errs).length) { setLabFormErrors(errs); return; }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        ...labForm,
+        buildingId: labForm.buildingId === "none" ? null : labForm.buildingId,
+        departmentId: labTarget.departmentId,
+      };
+
+      const res = await fetch("/api/labs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create lab");
+      setToast({ type: "success", msg: `"${data.labName}" added to ${labTarget.departmentName}.` });
+      closeLabDialog();
+      fetchDepartments();
+    } catch (err) {
+      setToast({ type: "error", msg: err.message });
     } finally {
       setSubmitting(false);
     }
@@ -442,9 +629,10 @@ const Department = () => {
                       <Badge className={getStatusColor(dept.status)} variant="outline">
                         {dept.status}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {dept.itemCount ?? 0} item(s)
-                      </span>
+                      <div className="flex flex-col items-end text-xs text-muted-foreground">
+                        <span>{dept.itemCount ?? 0} item(s)</span>
+                        <span>{dept.labCount ?? 0} lab(s)</span>
+                      </div>
                     </div>
 
                     {dept.location && (
@@ -471,6 +659,10 @@ const Department = () => {
                           <DropdownMenuItem onClick={() => setViewTarget(dept)}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openLabDialog(dept)}>
+                            <FlaskConical className="mr-2 h-4 w-4" />
+                            Add Lab
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(dept)}>
                             <Edit className="mr-2 h-4 w-4" />
@@ -510,6 +702,7 @@ const Department = () => {
                       <TableHead>Head</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Items</TableHead>
+                      <TableHead>Labs</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -518,7 +711,7 @@ const Department = () => {
                   <TableBody>
                     {filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                           <PackageX className="mx-auto h-8 w-8 mb-2 opacity-30" />
                           No departments found.
                         </TableCell>
@@ -540,6 +733,9 @@ const Department = () => {
                             <span className="font-medium">{dept.itemCount ?? 0}</span>
                           </TableCell>
                           <TableCell>
+                            <span className="font-medium">{dept.labCount ?? 0}</span>
+                          </TableCell>
+                          <TableCell>
                             <Badge className={getStatusColor(dept.status)} variant="outline">
                               {dept.status}
                             </Badge>
@@ -559,6 +755,10 @@ const Department = () => {
                                 <DropdownMenuItem onClick={() => setViewTarget(dept)}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openLabDialog(dept)}>
+                                  <FlaskConical className="mr-2 h-4 w-4" />
+                                  Add Lab
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openEdit(dept)}>
                                   <Edit className="mr-2 h-4 w-4" />
@@ -622,6 +822,31 @@ const Department = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Create Lab Dialog */}
+      <Dialog open={!!labTarget} onOpenChange={(o) => { if (!o) closeLabDialog(); }}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Create Lab</DialogTitle>
+            <DialogDescription>
+              Add a lab under {labTarget?.departmentName || "this department"}.
+            </DialogDescription>
+          </DialogHeader>
+          <LabForm
+            form={labForm}
+            setField={setLabField}
+            formErrors={labFormErrors}
+            buildings={buildings}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={closeLabDialog} disabled={submitting}>Cancel</Button>
+            <Button onClick={handleAddLab} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Create Lab
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ─── View Details Dialog ───────────────────────────────────── */}
       <Dialog open={!!viewTarget} onOpenChange={(o) => { if (!o) setViewTarget(null); }}>
         <DialogContent className="sm:max-w-[460px]">
@@ -652,6 +877,42 @@ const Department = () => {
                 <span className="text-muted-foreground">Items Linked</span>
                 <span className="font-medium">{viewTarget.itemCount ?? 0}</span>
               </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Labs</span>
+                <span className="font-medium">{viewTarget.labCount ?? 0}</span>
+              </div>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-muted-foreground">Department Labs</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { openLabDialog(viewTarget); setViewTarget(null); }}
+                  >
+                    <FlaskConical className="h-4 w-4 mr-2" />
+                    Add Lab
+                  </Button>
+                </div>
+                {labsForDepartment(viewTarget.departmentId).length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No labs assigned.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {labsForDepartment(viewTarget.departmentId).map((lab) => (
+                      <div key={lab.labId} className="rounded-md border px-3 py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium">{lab.labName}</span>
+                          {lab.labCode && (
+                            <span className="text-xs text-muted-foreground">{lab.labCode}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {lab.buildingName || "No building"}{lab.floorNumber ? `, Floor ${lab.floorNumber}` : ""}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               {viewTarget.description && (
                 <div className="pt-1">
                   <p className="text-muted-foreground mb-1">Description</p>
@@ -666,6 +927,9 @@ const Department = () => {
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setViewTarget(null)}>Close</Button>
+            <Button variant="outline" onClick={() => { openLabDialog(viewTarget); setViewTarget(null); }}>
+              <FlaskConical className="h-4 w-4 mr-2" /> Add Lab
+            </Button>
             <Button onClick={() => { openEdit(viewTarget); setViewTarget(null); }}>
               <Edit className="h-4 w-4 mr-2" /> Edit
             </Button>

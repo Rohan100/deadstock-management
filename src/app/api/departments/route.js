@@ -1,7 +1,8 @@
 import db from "@/db";
 import { NextResponse } from "next/server";
-import { departments, items } from "@/db/schema";
-import { eq, count } from "drizzle-orm";
+import { departments, items, labs } from "@/db/schema";
+import { sql } from "drizzle-orm";
+import { requireAdmin } from "@/lib/authorization";
 
 // GET
 export async function GET() {
@@ -16,20 +17,16 @@ export async function GET() {
         description: departments.description,
         createdAt: departments.createdAt,
         updatedAt: departments.updatedAt,
-        itemCount: count(items.itemId),
+        itemCount: sql`(
+          SELECT COUNT(*) FROM ${items}
+          WHERE ${items.departmentId} = ${departments.departmentId}
+        )`.mapWith(Number),
+        labCount: sql`(
+          SELECT COUNT(*) FROM ${labs}
+          WHERE ${labs.departmentId} = ${departments.departmentId}
+        )`.mapWith(Number),
       })
       .from(departments)
-      .leftJoin(items, eq(items.departmentId, departments.departmentId))
-      .groupBy(
-        departments.departmentId,
-        departments.departmentName,
-        departments.head,
-        departments.location,
-        departments.status,
-        departments.description,
-        departments.createdAt,
-        departments.updatedAt
-      )
       .orderBy(departments.departmentName);
 
     return NextResponse.json(rows);
@@ -44,6 +41,9 @@ export async function GET() {
 
 // POST
 export async function POST(request) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const { departmentName, head, location, status, description } =
       await request.json();

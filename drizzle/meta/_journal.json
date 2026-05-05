@@ -71,6 +71,13 @@
       "when": 1760364657245,
       "tag": "0009_busy_dracula",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777957200000,
+      "tag": "0010_department_labs",
+      "breakpoints": true
     }
   ]
 }
